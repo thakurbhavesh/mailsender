@@ -146,3 +146,8 @@ USE_TZ = True
 # Default to first ALLOWED_HOST if not set
 if not os.environ.get('TRACKING_BASE_URL'):
     os.environ['TRACKING_BASE_URL'] = f'https://{ALLOWED_HOSTS[0]}'
+
+# ---------- FEATURE FLAGS ----------
+# No Chrome on the VPS, and a datacenter IP gets captcha'd by Google Maps
+# anyway. Scrape locally, then push with `manage.py sync_to_prod`.
+SCRAPING_ENABLED = os.environ.get('SCRAPING_ENABLED', '').lower() in ('1', 'true', 'yes')

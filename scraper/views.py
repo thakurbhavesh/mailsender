@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.urls import reverse
+from django.conf import settings
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -185,8 +186,25 @@ def dashboard(request):
     return render(request, 'scraper/dashboard.html', context)
 
 
+SCRAPE_DISABLED_MSG = (
+    '🖥️ Scraping is disabled on this server — it needs a local Chrome browser. '
+    'Run the scrape on your own machine, then push the results with '
+    '`python manage.py sync_to_prod`.'
+)
+
+
+def _scraping_allowed(request):
+    """False (and flashes why) when this deployment cannot drive Chrome."""
+    if getattr(settings, 'SCRAPING_ENABLED', True):
+        return True
+    messages.error(request, SCRAPE_DISABLED_MSG)
+    return False
+
+
 @require_POST
 def start_job(request):
+    if not _scraping_allowed(request):
+        return redirect('dashboard')
     term = request.POST.get('search_term', '').strip()
     source = request.POST.get('source', 'google_maps')
     city = request.POST.get('city', 'Delhi').strip() or 'Delhi'
@@ -207,6 +225,8 @@ def start_job(request):
 @require_POST
 def re_search(request, job_id):
     """Re-run a previous search using the same term and source."""
+    if not _scraping_allowed(request):
+        return redirect(reverse('job_detail', args=[job_id]))
     old = get_object_or_404(ScrapeJob, id=job_id)
     term = old.search_term
     src = old.source or 'google_maps'

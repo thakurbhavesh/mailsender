@@ -64,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'scraper.context_processors.feature_flags',
             ],
         },
     },
@@ -134,3 +135,7 @@ LOGOUT_REDIRECT_URL = '/login/'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 SESSION_SAVE_EVERY_REQUEST = True  # rolling — session re-extends on every request
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # persistent — survives browser close
+
+# Scraping drives a real Chrome via Selenium, so it only works where a Chrome
+# binary exists — the operator's own machine. settings_prod turns it off.
+SCRAPING_ENABLED = True
