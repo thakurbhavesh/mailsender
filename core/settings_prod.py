@@ -2,14 +2,14 @@
 
 Reads secrets from environment variables. Set these on your VPS:
     SECRET_KEY=<random 50+ char string>
-    ALLOWED_HOSTS=leadhunt.com,www.leadhunt.com
+    ALLOWED_HOSTS=mailsender.vvmtechnologies.com
     DB_HOST=localhost  DB_PORT=5432  DB_NAME=leadhunt  DB_USER=leadhunt  DB_PASSWORD=<strong>
     SYNC_API_TOKEN=<random 40+ char string — same as PROD_SYNC_TOKEN on your local machine>
 
 Optional:
-    CSRF_TRUSTED_ORIGINS=https://leadhunt.com,https://www.leadhunt.com
+    CSRF_TRUSTED_ORIGINS=https://mailsender.vvmtechnologies.com
     SENTRY_DSN=https://...@sentry.io/...
-    TRACKING_BASE_URL=https://leadhunt.com
+    TRACKING_BASE_URL=https://mailsender.vvmtechnologies.com
 """
 import os
 from .settings import *  # noqa — inherit everything, then override
@@ -22,7 +22,7 @@ if not SECRET_KEY:
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()]
 if not ALLOWED_HOSTS:
-    raise RuntimeError('ALLOWED_HOSTS must be set (e.g. ALLOWED_HOSTS=leadhunt.com,www.leadhunt.com)')
+    raise RuntimeError('ALLOWED_HOSTS must be set (e.g. ALLOWED_HOSTS=mailsender.vvmtechnologies.com)')
 
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.environ.get(

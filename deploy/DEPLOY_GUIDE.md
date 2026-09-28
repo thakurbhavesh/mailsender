@@ -1,5 +1,10 @@
 # LeadHunt — Production Deployment Guide
 
+> **Deploying to `mailsender.vvmtechnologies.com`?** Use
+> [MAILSENDER_SETUP.md](MAILSENDER_SETUP.md) instead — it has the real
+> hostname, server IP and commands already filled in. This file is the
+> generic guide; `leadhunt.com` below is a placeholder.
+
 Hybrid setup: **Scraper runs locally** (your home PC) + **Web app runs on a VPS**.
 Callers log in from anywhere via the production URL.
 
