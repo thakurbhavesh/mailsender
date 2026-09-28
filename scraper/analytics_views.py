@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, date
 from collections import defaultdict
 from decimal import Decimal
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.db.models import Count, Q, Sum, F
 from django.utils import timezone
 
@@ -241,7 +241,8 @@ def goals_list(request):
 
 @admin_required
 def goal_edit(request, user_id):
-    profile = CallerProfile.objects.select_related('user').get(user_id=user_id)
+    profile = get_object_or_404(
+        CallerProfile.objects.select_related('user'), user_id=user_id)
     today = timezone.localdate()
     month_str = request.GET.get('month') or today.strftime('%Y-%m')
     try:
