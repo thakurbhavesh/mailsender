@@ -57,24 +57,12 @@
 </style>
 
 <!-- ═══ HERO: Quick start + KPIs ═══ -->
-<div class="dash-grid cols-2">
+<div class="dash-grid {% if SCRAPING_ENABLED %}cols-2{% endif %}">
+    {% if SCRAPING_ENABLED %}
     <div class="hero-action">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;opacity:0.85;">Start fresh</div>
         <h2 style="color:white;font-size:24px;margin:8px 0 6px;border:none;display:block;">🚀 Start a new scrape</h2>
         <p style="font-size:14px;opacity:0.95;margin-bottom:18px;">Pull leads from Google Maps, JustDial, or IndiaMART — auto-enrichment runs after.</p>
-        {% if not SCRAPING_ENABLED %}
-        <div style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:10px;padding:16px;">
-            <div style="font-weight:700;font-size:15px;margin-bottom:6px;">🖥️ Scraping apne computer par chalti hai</div>
-            <p style="font-size:13px;opacity:0.95;line-height:1.6;margin:0 0 10px;">
-                Is server par Chrome nahi hai, aur datacenter IP se Google Maps captcha deta hai.
-                Scrape apne PC par chalayein, phir leads yahan bhej dein:
-            </p>
-            <code style="display:block;background:rgba(0,0,0,0.35);padding:9px 12px;border-radius:7px;font-size:12px;">python manage.py sync_to_prod</code>
-            <p style="font-size:12px;opacity:0.85;margin:10px 0 0;">
-                Import CSV/Excel aur Quick Add yahan se kaam karte hain.
-            </p>
-        </div>
-        {% else %}
         <form method="post" action="{% url 'start_job' %}" id="scrapeForm">
             {% csrf_token %}
             <div style="display:grid;grid-template-columns:1fr 200px;gap:8px;margin-bottom:10px;">
@@ -103,8 +91,8 @@
                 <button type="submit" class="btn" style="background:white;color:#4f46e5;font-weight:700;padding:10px 22px;">⚡ Start Scrape</button>
             </div>
         </form>
-        {% endif %}
     </div>
+    {% endif %}
 
     <div>
         <div class="dash-grid cols-2" style="gap:12px;margin-bottom:0;">
