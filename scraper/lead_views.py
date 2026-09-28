@@ -21,35 +21,35 @@ from .models import (Place, EmailLog, CallLog, LeadAssignment, ScrapeJob,
 
 
 # ─────────────────────────────────────────────────────────────
-# Engagement buckets — the "kis lead pe kaam hua" question
+# Engagement buckets — the "which leads have been worked?" question
 # ─────────────────────────────────────────────────────────────
 WORK_CHOICES = [
-    ('due', '⏰ Follow-up due — aaj ya overdue'),
-    ('overdue', '🔴 Overdue — date nikal gayi'),
-    ('today', '📅 Aaj ka follow-up'),
-    ('no_followup', '❓ Koi follow-up set nahi'),
-    ('untouched', '🆕 Untouched — koi kaam nahi hua'),
-    ('worked', '✅ Worked — mail ya call hua'),
-    ('emailed', '📧 Email bheja gaya'),
-    ('not_emailed', '🚫 Email nahi bheja'),
-    ('opened', '👀 Mail open hua'),
-    ('not_opened', '📪 Bheja par open nahi hua'),
-    ('clicked', '🔗 Link click hua'),
-    ('called', '📞 Call hua'),
-    ('never_called', '☎️ Kabhi call nahi hua'),
-    ('stale', '⏳ 7+ din se koi activity nahi'),
+    ('due', 'Due now'),
+    ('overdue', 'Overdue'),
+    ('today', 'Due today'),
+    ('no_followup', 'No follow-up set'),
+    ('untouched', 'Never contacted'),
+    ('worked', 'Contacted'),
+    ('emailed', 'Emailed'),
+    ('not_emailed', 'Not emailed'),
+    ('opened', 'Opened an email'),
+    ('not_opened', 'Sent, not opened'),
+    ('clicked', 'Clicked a link'),
+    ('called', 'Called'),
+    ('never_called', 'Never called'),
+    ('stale', 'No activity in 7 days'),
 ]
 
 SORT_CHOICES = [
-    ('next_follow_up', 'Follow-up: soonest first'),
+    ('next_follow_up', 'Follow-up: soonest'),
     ('-last_activity_at', 'Last activity: newest'),
     ('last_activity_at', 'Last activity: oldest'),
-    ('-total_opens', 'Most opened'),
-    ('-total_clicks', 'Most clicked'),
+    ('-total_opens', 'Most opens'),
+    ('-total_clicks', 'Most clicks'),
     ('-email_count', 'Most emails sent'),
-    ('-lead_score', 'Score: high → low'),
-    ('lead_score', 'Score: low → high'),
-    ('name', 'Name: A → Z'),
+    ('-lead_score', 'Score: high to low'),
+    ('lead_score', 'Score: low to high'),
+    ('name', 'Name: A to Z'),
     ('-created_at', 'Newest lead'),
 ]
 
@@ -226,34 +226,34 @@ def build_timeline(place):
         if log.status == 'sent':
             events.append({
                 'at': when, 'kind': 'sent', 'icon': '📤',
-                'title': 'Email bheja: %s' % log.subject,
+                'title': 'Email sent: %s' % log.subject,
                 'detail': 'To %s%s' % (log.to_email, ' · via %s' % log.account.email if log.account else ''),
                 'meta': log.template.name if log.template else 'Custom mail',
             })
         elif log.status == 'failed':
             events.append({
                 'at': when, 'kind': 'failed', 'icon': '❌',
-                'title': 'Email fail hua: %s' % log.subject,
+                'title': 'Email failed: %s' % log.subject,
                 'detail': log.error_message[:200], 'meta': log.to_email,
             })
         else:
             events.append({
                 'at': when, 'kind': 'queued', 'icon': '⏳',
-                'title': 'Email queue mein: %s' % log.subject,
+                'title': 'Email queued: %s' % log.subject,
                 'detail': log.to_email, 'meta': '',
             })
 
         if log.opened_at:
             events.append({
                 'at': log.opened_at, 'kind': 'open', 'icon': '👀',
-                'title': 'Mail OPEN hua (pehli baar)',
+                'title': 'Email opened',
                 'detail': '"%s" — %s' % (log.subject, log.to_email),
-                'meta': 'Total %s baar open' % log.opened_count,
+                'meta': 'Opened %s times in total' % log.opened_count,
             })
         if log.last_opened_at and (log.opened_count or 0) > 1 and log.last_opened_at != log.opened_at:
             events.append({
                 'at': log.last_opened_at, 'kind': 'open', 'icon': '🔁',
-                'title': 'Dobara open hua (%sth time)' % log.opened_count,
+                'title': 'Opened again (%s times)' % log.opened_count,
                 'detail': '"%s"' % log.subject, 'meta': log.user_agent[:60],
             })
         for click in (log.clicks or []):
@@ -262,7 +262,7 @@ def build_timeline(place):
                 continue
             events.append({
                 'at': parsed, 'kind': 'click', 'icon': '🔗',
-                'title': 'Link CLICK hua',
+                'title': 'Link clicked',
                 'detail': click.get('url', '')[:160],
                 'meta': 'From "%s"' % log.subject[:40],
             })
@@ -270,7 +270,7 @@ def build_timeline(place):
     for call in CallLog.objects.filter(place=place).select_related('caller'):
         events.append({
             'at': call.created_at, 'kind': 'call', 'icon': '📞',
-            'title': 'Call — %s' % call.get_outcome_display(),
+            'title': 'Call: %s' % call.get_outcome_display(),
             'detail': call.notes[:200] or 'No notes',
             'meta': 'by %s' % call.caller.username,
         })
@@ -278,15 +278,15 @@ def build_timeline(place):
     for a in LeadAssignment.objects.filter(place=place).select_related('caller', 'assigned_by'):
         events.append({
             'at': a.assigned_at, 'kind': 'assign', 'icon': '👤',
-            'title': 'Assign hua → %s' % a.caller.username,
-            'detail': 'Status: %s' % a.get_status_display(),
+            'title': 'Assigned to %s' % a.caller.username,
+            'detail': 'Assignment status: %s' % a.get_status_display(),
             'meta': 'by %s' % a.assigned_by.username if a.assigned_by else '',
         })
 
     for m in Meeting.objects.filter(place=place):
         events.append({
             'at': m.created_at, 'kind': 'meeting', 'icon': '📅',
-            'title': 'Meeting book hui — %s' % m.get_status_display(),
+            'title': 'Meeting booked — %s' % m.get_status_display(),
             'detail': 'With %s (%s) at %s' % (
                 m.booker_name, m.booker_email, m.scheduled_at.strftime('%d %b %Y, %H:%M')),
             'meta': '%s min' % m.duration_min,
@@ -294,7 +294,7 @@ def build_timeline(place):
 
     events.append({
         'at': place.created_at, 'kind': 'created', 'icon': '🌱',
-        'title': 'Lead database mein aaya',
+        'title': 'Lead added to the database',
         'detail': 'Source: %s' % place.source, 'meta': 'Job #%s' % place.job_id,
     })
 
@@ -372,16 +372,16 @@ def set_follow_up(request, place_id):
         place.next_follow_up = None
         place.follow_up_note = ''
         place.save(update_fields=['next_follow_up', 'follow_up_note'])
-        messages.success(request, '✓ Follow-up hata diya.')
+        messages.success(request, 'Follow-up cleared.')
     else:
         when = _parse_when(request.POST.get('when', ''), request.POST.get('preset', ''))
         if not when:
-            messages.error(request, 'Koi valid date nahi mili.')
+            messages.error(request, 'Enter a valid date and time.')
             return redirect(request.META.get('HTTP_REFERER') or 'lead_management')
         place.next_follow_up = when
         place.follow_up_note = request.POST.get('note', '').strip()[:300]
         place.save(update_fields=['next_follow_up', 'follow_up_note'])
-        messages.success(request, '⏰ Follow-up set: %s' % timezone.localtime(when).strftime('%d %b %Y, %H:%M'))
+        messages.success(request, 'Follow-up set for %s' % timezone.localtime(when).strftime('%d %b %Y, %H:%M'))
 
     return redirect(request.META.get('HTTP_REFERER') or 'lead_management')
 
@@ -394,7 +394,7 @@ def lead_bulk_action(request):
     back = request.META.get('HTTP_REFERER') or reverse('lead_management')
 
     if not ids:
-        messages.error(request, 'Pehle kuch leads select karein.')
+        messages.error(request, 'Select at least one lead first.')
         return redirect(back)
 
     qs = Place.objects.filter(id__in=ids)
@@ -404,7 +404,7 @@ def lead_bulk_action(request):
         new_status = action.split(':', 1)[1]
         if new_status in dict(Place.LEAD_STATUS_CHOICES):
             qs.update(lead_status=new_status, updated_at=timezone.now())
-            messages.success(request, '✓ %d leads ko %s kiya.' % (n, new_status))
+            messages.success(request, '%d leads moved to %s.' % (n, new_status))
         else:
             messages.error(request, 'Unknown status.')
 
@@ -412,12 +412,12 @@ def lead_bulk_action(request):
         when = _parse_when('', action.split(':', 1)[1])
         if when:
             qs.update(next_follow_up=when, updated_at=timezone.now())
-            messages.success(request, '⏰ %d leads ka follow-up %s pe set kiya.'
+            messages.success(request, 'Follow-up set for %d leads on %s.'
                              % (n, timezone.localtime(when).strftime('%d %b, %H:%M')))
 
     elif action == 'clear_followup':
         qs.update(next_follow_up=None, follow_up_note='', updated_at=timezone.now())
-        messages.success(request, '✓ %d leads ka follow-up hataya.' % n)
+        messages.success(request, 'Follow-up cleared for %d leads.' % n)
 
     elif action == 'suppress':
         # Stop emailing these addresses, and halt any drip already running.
@@ -426,7 +426,7 @@ def lead_bulk_action(request):
             Suppression.add(addr, reason='manual', note='Bulk action from Lead Management')
         SequenceEnrollment.objects.filter(place__in=qs, status='active').update(
             status='stopped', stop_reason='Suppressed by admin')
-        messages.success(request, '🚫 %d addresses suppression list mein daale.' % len(emails))
+        messages.success(request, '%d addresses added to the suppression list.' % len(emails))
 
     else:
         messages.error(request, 'Unknown action.')
@@ -461,11 +461,11 @@ def suppression_list(request):
 def suppression_add(request):
     addr = request.POST.get('email', '').strip()
     if not addr or '@' not in addr:
-        messages.error(request, 'Valid email daalein.')
+        messages.error(request, 'Enter a valid email address.')
     else:
         Suppression.add(addr, reason='manual',
                         note=request.POST.get('note', '').strip())
-        messages.success(request, '🚫 %s ab suppression list mein hai.' % addr)
+        messages.success(request, '%s will no longer be emailed.' % addr)
     return redirect('suppression_list')
 
 
@@ -475,5 +475,5 @@ def suppression_remove(request, supp_id):
     s = get_object_or_404(Suppression, id=supp_id)
     addr = s.email
     s.delete()
-    messages.success(request, '✓ %s list se hataya — ab mail ja sakta hai.' % addr)
+    messages.success(request, '%s removed — emails can be sent again.' % addr)
     return redirect('suppression_list')

@@ -1,6 +1,6 @@
 {% extends 'scraper/base.html' %}
 {% block heading %}🧾 {{ place.name }}{% endblock %}
-{% block subheading %}Is lead pe ab tak kya-kya hua — pura record{% endblock %}
+{% block subheading %}Complete record of every touch on this lead{% endblock %}
 {% block content %}
 
 <style>
@@ -56,42 +56,42 @@
 <div class="la-top">
     <a href="{% url 'lead_management' %}" class="btn btn-secondary btn-sm">← Lead Management</a>
     <a href="{% url 'lead_detail' place.id %}" class="btn btn-secondary btn-sm">Lead profile</a>
-    {% if place.email %}<a href="{% url 'compose' %}?place={{ place.id }}" class="btn btn-primary btn-sm">📧 Mail bhejo</a>{% endif %}
+    {% if place.email %}<a href="{% url 'compose' %}?place={{ place.id }}" class="btn btn-primary btn-sm">Send email</a>{% endif %}
     <span class="badge badge-{{ place.lead_status }}">{{ place.get_lead_status_display }}</span>
     {% if summary.is_untouched %}
-        <span class="pill pill-unopened">🆕 Is lead pe abhi tak koi kaam nahi hua</span>
+        <span class="pill pill-unopened">Never contacted</span>
     {% endif %}
 </div>
 
 <div class="card" style="margin-bottom:16px;">
-    <div class="card-header"><h2>⏰ Next follow-up</h2></div>
+    <div class="card-header"><h2>Next follow-up</h2></div>
     {% if place.next_follow_up %}
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
             {% with st=place.follow_up_state %}
             <span class="pill pill-{{ st }}" style="font-size:13px;padding:5px 12px;">
-                {% if st == 'overdue' %}🔴 Overdue{% elif st == 'today' %}📅 Aaj{% else %}🕑 Scheduled{% endif %}
+                {% if st == 'overdue' %}Overdue{% elif st == 'today' %}Due today{% else %}Scheduled{% endif %}
                 · {{ place.next_follow_up|date:'d M Y, H:i' }}
             </span>
             {% endwith %}
             {% if place.follow_up_note %}<span style="font-size:13px;color:var(--text-muted);">{{ place.follow_up_note }}</span>{% endif %}
             <form method="post" action="{% url 'set_follow_up' place.id %}" style="margin:0;">
                 {% csrf_token %}<input type="hidden" name="clear" value="1">
-                <button class="btn btn-secondary btn-sm" type="submit">✕ Hatao</button>
+                <button class="btn btn-secondary btn-sm" type="submit">Clear</button>
             </form>
         </div>
     {% else %}
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
-            Koi follow-up set nahi. Isse lead "aaj ka kaam" list mein aa jayegi.</p>
+            No follow-up scheduled. Setting one puts this lead in the daily queue.</p>
     {% endif %}
 
     <form method="post" action="{% url 'set_follow_up' place.id %}"
           style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         {% csrf_token %}
-        <button name="preset" value="today"    class="btn btn-secondary btn-sm" type="submit">Aaj shaam</button>
-        <button name="preset" value="tomorrow" class="btn btn-secondary btn-sm" type="submit">Kal</button>
-        <button name="preset" value="3d"       class="btn btn-secondary btn-sm" type="submit">3 din</button>
-        <button name="preset" value="1w"       class="btn btn-secondary btn-sm" type="submit">1 hafta</button>
-        <span style="color:var(--text-muted);font-size:12px;">ya</span>
+        <button name="preset" value="today"    class="btn btn-secondary btn-sm" type="submit">This evening</button>
+        <button name="preset" value="tomorrow" class="btn btn-secondary btn-sm" type="submit">Tomorrow</button>
+        <button name="preset" value="3d"       class="btn btn-secondary btn-sm" type="submit">In 3 days</button>
+        <button name="preset" value="1w"       class="btn btn-secondary btn-sm" type="submit">In 1 week</button>
+        <span style="color:var(--text-muted);font-size:12px;">or</span>
         <input type="datetime-local" name="when" style="font-size:13px;padding:6px 10px;">
         <input type="text" name="note" placeholder="Note (optional)" maxlength="300"
                style="font-size:13px;padding:6px 10px;flex:1;min-width:150px;">
@@ -100,39 +100,39 @@
 </div>
 
 <div class="la-kpi">
-    <div class="k"><div class="lab">Mails bheje</div><div class="val">{{ summary.emails_sent }}</div>
-        <div class="sub">{% if summary.emails_failed %}{{ summary.emails_failed }} fail{% else %}koi fail nahi{% endif %}</div></div>
-    <div class="k"><div class="lab">👀 Open hue</div><div class="val">{{ summary.opened_mails }}</div>
+    <div class="k"><div class="lab">Emails sent</div><div class="val">{{ summary.emails_sent }}</div>
+        <div class="sub">{% if summary.emails_failed %}{{ summary.emails_failed }} failed{% else %}none failed{% endif %}</div></div>
+    <div class="k"><div class="lab">Opened</div><div class="val">{{ summary.opened_mails }}</div>
         <div class="sub">{{ summary.open_rate }}% open rate</div></div>
     <div class="k"><div class="lab">Total opens</div><div class="val">{{ summary.total_opens }}</div>
-        <div class="sub">baar khola gaya</div></div>
-    <div class="k"><div class="lab">🔗 Clicks</div><div class="val">{{ summary.total_clicks }}</div>
+        <div class="sub">across all emails</div></div>
+    <div class="k"><div class="lab">Clicks</div><div class="val">{{ summary.total_clicks }}</div>
         <div class="sub">link clicks</div></div>
-    <div class="k"><div class="lab">📞 Calls</div><div class="val">{{ summary.calls }}</div>
-        <div class="sub">{% if summary.last_call %}{{ summary.last_call.created_at|date:'d M' }}{% else %}kabhi nahi{% endif %}</div></div>
-    <div class="k"><div class="lab">Pehla mail</div><div class="val" style="font-size:14px;">
+    <div class="k"><div class="lab">Calls</div><div class="val">{{ summary.calls }}</div>
+        <div class="sub">{% if summary.last_call %}last {{ summary.last_call.created_at|date:'d M' }}{% else %}never called{% endif %}</div></div>
+    <div class="k"><div class="lab">First email</div><div class="val" style="font-size:14px;">
         {% if summary.first_sent %}{{ summary.first_sent|date:'d M Y' }}{% else %}—{% endif %}</div>
         <div class="sub">{% if summary.last_sent %}last: {{ summary.last_sent|date:'d M' }}{% endif %}</div></div>
-    <div class="k"><div class="lab">Aakhri open</div><div class="val" style="font-size:14px;">
+    <div class="k"><div class="lab">Last opened</div><div class="val" style="font-size:14px;">
         {% if summary.last_open %}{{ summary.last_open|date:'d M, H:i' }}{% else %}—{% endif %}</div>
-        <div class="sub">{% if summary.last_open %}{{ summary.last_open|timesince }} pehle{% endif %}</div></div>
+        <div class="sub">{% if summary.last_open %}{{ summary.last_open|timesince }} ago{% endif %}</div></div>
 </div>
 
 <div class="la-split">
 
     <!-- ───── Timeline ───── -->
     <div class="card">
-        <div class="card-header"><h2>🕒 Activity Timeline <span class="h2-count">{{ timeline|length }}</span></h2></div>
+        <div class="card-header"><h2>Activity timeline <span class="h2-count">{{ timeline|length }}</span></h2></div>
         <div class="tl">
         {% for e in timeline %}
             <div class="tl-item k-{{ e.kind }}">
                 <div class="tl-dot">{{ e.icon }}</div>
                 <div class="tl-title">{{ e.title }}</div>
                 {% if e.detail %}<div class="tl-detail">{{ e.detail }}</div>{% endif %}
-                <div class="tl-when">{{ e.at|date:'d M Y, H:i' }} · {{ e.at|timesince }} pehle{% if e.meta %} · {{ e.meta }}{% endif %}</div>
+                <div class="tl-when">{{ e.at|date:'d M Y, H:i' }} · {{ e.at|timesince }} ago{% if e.meta %} · {{ e.meta }}{% endif %}</div>
             </div>
         {% empty %}
-            <div style="color:var(--text-muted);padding:20px;">Koi activity nahi.</div>
+            <div style="color:var(--text-muted);padding:20px;">No activity yet.</div>
         {% endfor %}
         </div>
     </div>
@@ -140,7 +140,7 @@
     <!-- ───── Per-mail tracking ───── -->
     <div>
         <div class="card" style="margin-bottom:14px;">
-            <div class="card-header"><h2>📧 Har mail ka tracking <span class="h2-count">{{ emails|length }}</span></h2></div>
+            <div class="card-header"><h2>Email tracking <span class="h2-count">{{ emails|length }}</span></h2></div>
             {% for m in emails %}
             <div class="mail-card {% if m.status == 'failed' %}failed{% elif m.opened_at %}opened{% else %}unopened{% endif %}">
                 <div class="mail-row">
@@ -154,14 +154,14 @@
                     {% if m.account %} · via {{ m.account.email }}{% endif %}
                 </div>
                 <div class="mail-stats">
-                    <span>📤 Bheja: <b>{% if m.sent_at %}{{ m.sent_at|date:'d M, H:i' }}{% else %}—{% endif %}</b></span>
-                    <span>👀 Open: <b>{% if m.opened_at %}{{ m.opened_at|date:'d M, H:i' }}{% else %}nahi{% endif %}</b></span>
-                    <span>🔁 Baar: <b>{{ m.opened_count }}</b></span>
-                    <span>🔗 Clicks: <b>{{ m.clicked_count }}</b></span>
+                    <span>Sent: <b>{% if m.sent_at %}{{ m.sent_at|date:'d M, H:i' }}{% else %}—{% endif %}</b></span>
+                    <span>Opened: <b>{% if m.opened_at %}{{ m.opened_at|date:'d M, H:i' }}{% else %}no{% endif %}</b></span>
+                    <span>Times: <b>{{ m.opened_count }}</b></span>
+                    <span>Clicks: <b>{{ m.clicked_count }}</b></span>
                 </div>
                 {% if m.last_opened_at and m.opened_count > 1 %}
                     <div style="font-size:11px;color:#059669;margin-top:6px;">
-                        Aakhri baar khola: {{ m.last_opened_at|date:'d M Y, H:i' }} ({{ m.last_opened_at|timesince }} pehle)
+                        Last opened {{ m.last_opened_at|date:'d M Y, H:i' }} ({{ m.last_opened_at|timesince }} ago)
                     </div>
                 {% endif %}
                 {% if m.clicks %}
@@ -179,19 +179,19 @@
                     <div style="font-size:11.5px;color:#b91c1c;margin-top:6px;">⚠ {{ m.error_message|truncatechars:150 }}</div>
                 {% endif %}
                 <div style="margin-top:8px;">
-                    <a href="{% url 'email_log_detail' m.id %}" class="btn btn-secondary btn-sm">Mail dekho</a>
+                    <a href="{% url 'email_log_detail' m.id %}" class="btn btn-secondary btn-sm">View email</a>
                 </div>
             </div>
             {% empty %}
             <div style="color:var(--text-muted);text-align:center;padding:24px;font-size:13px;">
-                Is lead ko abhi tak koi mail nahi gaya.
-                {% if place.email %}<br><a href="{% url 'compose' %}?place={{ place.id }}" class="link">Abhi bhejo →</a>{% endif %}
+                No emails have been sent to this lead.
+                {% if place.email %}<br><a href="{% url 'compose' %}?place={{ place.id }}" class="link">Send one now →</a>{% endif %}
             </div>
             {% endfor %}
         </div>
 
         <div class="card" style="margin-bottom:14px;">
-            <div class="card-header"><h2>📞 Call log <span class="h2-count">{{ calls|length }}</span></h2></div>
+            <div class="card-header"><h2>Call log <span class="h2-count">{{ calls|length }}</span></h2></div>
             {% for c in calls %}
             <div style="padding:9px 0;border-bottom:1px solid var(--border);">
                 <div style="display:flex;justify-content:space-between;font-size:13px;">
@@ -203,12 +203,12 @@
                 </div>
             </div>
             {% empty %}
-            <div style="color:var(--text-muted);font-size:13px;padding:14px 0;">Koi call nahi hui.</div>
+            <div style="color:var(--text-muted);font-size:13px;padding:14px 0;">No calls logged.</div>
             {% endfor %}
         </div>
 
         <div class="card">
-            <div class="card-header"><h2>👤 Assignments <span class="h2-count">{{ assignments|length }}</span></h2></div>
+            <div class="card-header"><h2>Assignments <span class="h2-count">{{ assignments|length }}</span></h2></div>
             {% for a in assignments %}
             <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;
                         display:flex;justify-content:space-between;">
@@ -216,7 +216,7 @@
                 <span style="font-size:11px;color:var(--text-muted);">{{ a.get_status_display }} · {{ a.assigned_at|date:'d M' }}</span>
             </div>
             {% empty %}
-            <div style="color:var(--text-muted);font-size:13px;padding:14px 0;">Kisi ko assign nahi hua.</div>
+            <div style="color:var(--text-muted);font-size:13px;padding:14px 0;">Not assigned to anyone.</div>
             {% endfor %}
         </div>
     </div>

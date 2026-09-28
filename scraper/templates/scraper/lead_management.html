@@ -1,49 +1,6 @@
 {% extends 'scraper/base.html' %}
-{% block heading %}🎯 Lead Management
-<script>
-(function () {
-    const form  = document.getElementById('bulkForm');
-    const bar   = document.getElementById('bulkBar');
-    const count = document.getElementById('bulkCount');
-    const all   = document.getElementById('selAll');
-    if (!form) return;
-
-    const rows = () => Array.from(form.querySelectorAll('.rowSel'));
-
-    function refresh() {
-        const picked = rows().filter(r => r.checked).length;
-        count.textContent = picked;
-        bar.hidden = picked === 0;
-        all.checked = picked > 0 && picked === rows().length;
-        all.indeterminate = picked > 0 && picked < rows().length;
-    }
-
-    all.addEventListener('change', () => {
-        rows().forEach(r => { r.checked = all.checked; });
-        refresh();
-    });
-    form.addEventListener('change', e => { if (e.target.classList.contains('rowSel')) refresh(); });
-
-    window.clearSel = function () {
-        rows().forEach(r => { r.checked = false; });
-        all.checked = all.indeterminate = false;
-        refresh();
-    };
-
-    form.addEventListener('submit', e => {
-        const action = form.querySelector('[name=action]').value;
-        const n = rows().filter(r => r.checked).length;
-        if (action === 'suppress' &&
-            !confirm(n + ' leads ko suppress karein? Inhe dobara mail nahi jayega.')) {
-            e.preventDefault();
-        }
-    });
-
-    refresh();
-})();
-</script>
-{% endblock %}
-{% block subheading %}Har lead pe kya kaam hua — mail kab gaya, kab open hua, kaun laga hai{% endblock %}
+{% block heading %}Lead Management{% endblock %}
+{% block subheading %}Outreach history and follow-ups across every lead{% endblock %}
 {% block content %}
 
 <style>
@@ -107,31 +64,31 @@
 
 <!-- ───────── KPI strip ───────── -->
 <div class="lm-kpi">
-    <div class="k hot"><div class="lab">🔴 Overdue</div><div class="val">{{ stats.overdue }}</div>
-        <div class="sub">follow-up nikal gaya</div></div>
-    <div class="k warn"><div class="lab">📅 Aaj due</div><div class="val">{{ stats.due_today }}</div>
-        <div class="sub">aaj karna hai</div></div>
+    <div class="k hot"><div class="lab">Overdue</div><div class="val">{{ stats.overdue }}</div>
+        <div class="sub">past their follow-up date</div></div>
+    <div class="k warn"><div class="lab">Due today</div><div class="val">{{ stats.due_today }}</div>
+        <div class="sub">scheduled for today</div></div>
     <div class="k"><div class="lab">Total leads</div><div class="val">{{ stats.total }}</div>
-        <div class="sub">filter ke andar</div></div>
-    <div class="k good"><div class="lab">✅ Kaam hua</div><div class="val">{{ stats.worked }}</div>
+        <div class="sub">matching filters</div></div>
+    <div class="k good"><div class="lab">Contacted</div><div class="val">{{ stats.worked }}</div>
         <div class="sub">{{ stats.coverage }}% coverage</div></div>
-    <div class="k cold"><div class="lab">🆕 Untouched</div><div class="val">{{ stats.untouched }}</div>
-        <div class="sub">koi mail/call nahi</div></div>
-    <div class="k"><div class="lab">📧 Emailed</div><div class="val">{{ stats.emailed }}</div>
-        <div class="sub">leads ko mail gaya</div></div>
-    <div class="k good"><div class="lab">👀 Opened</div><div class="val">{{ stats.opened }}</div>
+    <div class="k cold"><div class="lab">Never contacted</div><div class="val">{{ stats.untouched }}</div>
+        <div class="sub">no email or call yet</div></div>
+    <div class="k"><div class="lab">Emailed</div><div class="val">{{ stats.emailed }}</div>
+        <div class="sub">have received email</div></div>
+    <div class="k good"><div class="lab">Opened</div><div class="val">{{ stats.opened }}</div>
         <div class="sub">{{ stats.open_rate }}% open rate</div></div>
-    <div class="k hot"><div class="lab">🔗 Clicked</div><div class="val">{{ stats.clicked }}</div>
+    <div class="k hot"><div class="lab">Clicked</div><div class="val">{{ stats.clicked }}</div>
         <div class="sub">{{ stats.click_rate }}% CTR</div></div>
-    <div class="k warn"><div class="lab">📞 Called</div><div class="val">{{ stats.called }}</div>
-        <div class="sub">call log hai</div></div>
-    <div class="k good"><div class="lab">🏆 Converted</div><div class="val">{{ stats.converted }}</div>
+    <div class="k warn"><div class="lab">Called</div><div class="val">{{ stats.called }}</div>
+        <div class="sub">have a call logged</div></div>
+    <div class="k good"><div class="lab">Converted</div><div class="val">{{ stats.converted }}</div>
         <div class="sub">closed deals</div></div>
 </div>
 
 <!-- ───────── Quick filter chips ───────── -->
 <div class="lm-chips">
-    <a href="?" class="{% if not work %}on{% endif %}">Sab leads</a>
+    <a href="?" class="{% if not work %}on{% endif %}">All leads</a>
     {% for val, label in work_choices %}
         <a href="?work={{ val }}" class="{% if work == val %}on{% endif %}">{{ label }}</a>
     {% endfor %}
@@ -139,11 +96,11 @@
 
 <!-- ───────── Filters ───────── -->
 <div class="card" style="margin-bottom:18px;">
-    <div class="card-header"><h2>🔎 Filters</h2></div>
+    <div class="card-header"><h2>Filters</h2></div>
     <form method="get">
         <input type="hidden" name="work" value="{{ work }}">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px;">
-            <input type="text" name="q" value="{{ q }}" placeholder="🔍 Naam, email, phone..." style="grid-column:span 2;">
+            <input type="text" name="q" value="{{ q }}" placeholder="Search name, email or phone" style="grid-column:span 2;">
             <select name="lead_status">
                 <option value="">All statuses</option>
                 {% for v,l in status_choices %}<option value="{{ v }}" {% if v == lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
@@ -185,7 +142,7 @@
 <!-- ───────── Table ───────── -->
 <div class="card">
     <div class="card-header">
-        <h2>📋 Leads <span class="h2-count">{{ stats.total }}</span></h2>
+        <h2>Leads <span class="h2-count">{{ stats.total }}</span></h2>
         <span style="font-size:12px;color:var(--text-muted);">
             {{ page.start_index }}–{{ page.end_index }} of {{ stats.total }}
         </span>
@@ -196,19 +153,19 @@
     <div class="bulk-bar" id="bulkBar" hidden>
         <span><b id="bulkCount">0</b> selected</span>
         <select name="action" required>
-            <option value="">Action chunein…</option>
+            <option value="">Choose an action…</option>
             <optgroup label="Follow-up">
-                <option value="followup:today">⏰ Aaj shaam</option>
-                <option value="followup:tomorrow">⏰ Kal subah</option>
-                <option value="followup:3d">⏰ 3 din baad</option>
-                <option value="followup:1w">⏰ 1 hafte baad</option>
-                <option value="clear_followup">✕ Follow-up hatao</option>
+                <option value="followup:today">Follow up this evening</option>
+                <option value="followup:tomorrow">Follow up tomorrow morning</option>
+                <option value="followup:3d">Follow up in 3 days</option>
+                <option value="followup:1w">Follow up in 1 week</option>
+                <option value="clear_followup">Clear follow-up</option>
             </optgroup>
             <optgroup label="Status">
                 {% for v,l in status_choices %}<option value="status:{{ v }}">→ {{ l }}</option>{% endfor %}
             </optgroup>
             <optgroup label="Email">
-                <option value="suppress">🚫 Suppress (mail mat bhejo)</option>
+                <option value="suppress">Suppress — never email these</option>
             </optgroup>
         </select>
         <button type="submit" class="btn btn-primary btn-sm">Apply</button>
@@ -219,17 +176,17 @@
     <table class="lm-table">
         <thead>
             <tr>
-                <th style="width:28px;"><input type="checkbox" id="selAll" title="Sab select"></th>
+                <th style="width:28px;"><input type="checkbox" id="selAll" title="Select all"></th>
                 <th>Lead</th>
                 <th>Follow-up</th>
-                <th>Kaam status</th>
+                <th>Engagement</th>
                 <th>Owner</th>
-                <th>📧 Mails</th>
-                <th>Last mail kab</th>
-                <th>👀 Opens</th>
-                <th>Open kab hua</th>
-                <th>🔗 Clicks</th>
-                <th>📞 Calls</th>
+                <th>Emails</th>
+                <th>Last emailed</th>
+                <th>Opens</th>
+                <th>Last opened</th>
+                <th>Clicks</th>
+                <th>Calls</th>
                 <th>Stage</th>
                 <th></th>
             </tr>
@@ -256,24 +213,24 @@
                 </td>
                 <td>
                     {% if p.email_count == 0 and p.call_count == 0 %}
-                        <span class="pill pill-untouched">🆕 Untouched</span>
+                        <span class="pill pill-untouched">New</span>
                     {% else %}
-                        {% if p.total_clicks %}<span class="pill pill-clicked">🔗 Clicked</span>
-                        {% elif p.opened_mails %}<span class="pill pill-opened">👀 Opened</span>
-                        {% elif p.email_count %}<span class="pill pill-sent">📤 Sent</span>{% endif %}
-                        {% if p.call_count %}<span class="pill pill-called">📞 Called</span>{% endif %}
+                        {% if p.total_clicks %}<span class="pill pill-clicked">Clicked</span>
+                        {% elif p.opened_mails %}<span class="pill pill-opened">Opened</span>
+                        {% elif p.email_count %}<span class="pill pill-sent">Sent</span>{% endif %}
+                        {% if p.call_count %}<span class="pill pill-called">Called</span>{% endif %}
                     {% endif %}
                 </td>
                 <td><span style="font-size:12px;">{{ p.owner_name|default:"—" }}</span></td>
                 <td><span class="num {% if not p.email_count %}zero{% endif %}">{{ p.email_count }}</span></td>
                 <td class="when">{% if p.last_email_at %}{{ p.last_email_at|date:'d M, H:i' }}<br>
-                        <span style="color:#94a3b8;">{{ p.last_email_at|timesince }} pehle</span>
+                        <span style="color:#94a3b8;">{{ p.last_email_at|timesince }} ago</span>
                     {% else %}—{% endif %}</td>
                 <td><span class="num {% if not p.total_opens %}zero{% endif %}">{{ p.total_opens }}</span>
-                    {% if p.opened_mails %}<div class="lm-sub">{{ p.opened_mails }} mail</div>{% endif %}</td>
+                    {% if p.opened_mails %}<div class="lm-sub">{{ p.opened_mails }} email{{ p.opened_mails|pluralize }}</div>{% endif %}</td>
                 <td class="when">{% if p.last_open_at %}{{ p.last_open_at|date:'d M, H:i' }}<br>
-                        <span style="color:#94a3b8;">{{ p.last_open_at|timesince }} pehle</span>
-                    {% elif p.email_count %}<span style="color:#f59e0b;">abhi nahi khola</span>
+                        <span style="color:#94a3b8;">{{ p.last_open_at|timesince }} ago</span>
+                    {% elif p.email_count %}<span style="color:#f59e0b;">not opened</span>
                     {% else %}—{% endif %}</td>
                 <td><span class="num {% if not p.total_clicks %}zero{% endif %}">{{ p.total_clicks }}</span></td>
                 <td><span class="num {% if not p.call_count %}zero{% endif %}">{{ p.call_count }}</span>
@@ -287,7 +244,7 @@
             </tr>
         {% empty %}
             <tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text-muted);">
-                Is filter pe koi lead nahi mili.</td></tr>
+                No leads match these filters.</td></tr>
         {% endfor %}
         </tbody>
     </table>
