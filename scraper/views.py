@@ -55,17 +55,32 @@ def _filter_places(request):
 def dashboard(request):
     places, filters = _filter_places(request)
 
-    total_places = Place.objects.count()
-    total_jobs = ScrapeJob.objects.count()
-    completed_jobs = ScrapeJob.objects.filter(status='completed').count()
-    running_jobs = ScrapeJob.objects.filter(status='running').count()
+    # One pass over Place instead of seven separate counts.
+    totals = Place.objects.aggregate(
+        total=Count('id'),
+        with_email=Count('id', filter=~Q(email='')),
+        with_phone=Count('id', filter=~Q(phone='')),
+        with_website=Count('id', filter=~Q(website='')),
+        converted=Count('id', filter=Q(lead_status='converted')),
+        avg_reviews=Avg('reviews_count'),
+        avg_score=Avg('lead_score'),
+    )
+    total_places = totals['total']
+    with_email = totals['with_email']
+    with_phone = totals['with_phone']
+    with_website = totals['with_website']
+    converted = totals['converted']
+    avg_reviews = totals['avg_reviews'] or 0
+    avg_score = totals['avg_score'] or 0
 
-    with_email = Place.objects.exclude(email='').count()
-    with_phone = Place.objects.exclude(phone='').count()
-    with_website = Place.objects.exclude(website='').count()
-    converted = Place.objects.filter(lead_status='converted').count()
-    avg_reviews = Place.objects.aggregate(a=Avg('reviews_count'))['a'] or 0
-    avg_score = Place.objects.aggregate(a=Avg('lead_score'))['a'] or 0
+    job_totals = ScrapeJob.objects.aggregate(
+        total=Count('id'),
+        completed=Count('id', filter=Q(status='completed')),
+        running=Count('id', filter=Q(status='running')),
+    )
+    total_jobs = job_totals['total']
+    completed_jobs = job_totals['completed']
+    running_jobs = job_totals['running']
 
     top_categories = list(
         Place.objects.exclude(category='')
@@ -92,10 +107,16 @@ def dashboard(request):
         'justdial': {'name': 'JustDial', 'icon': '📱', 'color': '#FFC107', 'status': 'soon'},
         'indiamart': {'name': 'IndiaMART', 'icon': '🏭', 'color': '#FF6B35', 'status': 'soon'},
     }
+    # source_breakdown already has the lead counts; group the jobs once too.
+    leads_by_source = {r['source']: r['count'] for r in source_breakdown}
+    jobs_by_source = {
+        r['source']: r['count']
+        for r in ScrapeJob.objects.values('source').annotate(count=Count('id'))
+    }
     platforms_used = []
     for src_key, meta in SOURCE_LABELS.items():
-        leads = Place.objects.filter(source=src_key).count()
-        jobs_count = ScrapeJob.objects.filter(source=src_key).count()
+        leads = leads_by_source.get(src_key, 0)
+        jobs_count = jobs_by_source.get(src_key, 0)
         platforms_used.append({
             'key': src_key, 'name': meta['name'], 'icon': meta['icon'], 'color': meta['color'],
             'status': meta['status'],
@@ -107,7 +128,8 @@ def dashboard(request):
     # Last 5 unique searches with re-search ability
     last_searches = []
     seen_terms = set()
-    for j in ScrapeJob.objects.exclude(search_term='__manual__').order_by('-started_at'):
+    # Bounded: five distinct terms live well inside the newest 60 jobs.
+    for j in ScrapeJob.objects.exclude(search_term='__manual__').order_by('-started_at')[:60]:
         if j.search_term in seen_terms:
             continue
         seen_terms.add(j.search_term)
@@ -119,9 +141,11 @@ def dashboard(request):
     hot_leads = Place.objects.filter(lead_score__gte=40).order_by('-lead_score', '-created_at')[:6]
 
     # Pipeline counts
-    pipeline = {}
-    for v, l in Place.LEAD_STATUS_CHOICES:
-        pipeline[v] = {'label': l, 'count': Place.objects.filter(lead_status=v).count()}
+    counts_by_status = {r['lead_status']: r['count'] for r in status_breakdown}
+    pipeline = {
+        v: {'label': l, 'count': counts_by_status.get(v, 0)}
+        for v, l in Place.LEAD_STATUS_CHOICES
+    }
 
     # Recent activity (jobs + emails + AI)
     from .models import EmailLog, AIGenerationLog

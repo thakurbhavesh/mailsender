@@ -5,7 +5,9 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from .email_service import append_unsub_footer, deliver
@@ -209,3 +211,46 @@ class ScrapingFlagTests(TestCase):
         with self.settings(SCRAPING_ENABLED=False):
             r = self.client.get('/')
             self.assertNotContains(r, 'Start a new scrape')
+
+
+class DashboardAggregateTests(TestCase):
+    """The dashboard counts everything in a few grouped queries now, so guard
+    against those totals drifting from the plain per-field counts."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser('chief', 'c@example.com', 'x')
+        self.client.force_login(self.admin)
+        make_place('Full', 'f@example.com', unique_key='f',
+                   phone='123', website='https://f.test', lead_status='converted')
+        make_place('NoEmail', '', unique_key='n', phone='456')
+        make_place('Bare', '', unique_key='b')
+
+    def test_totals_match_individual_counts(self):
+        ctx = self.client.get('/').context
+        self.assertEqual(ctx['total_places'], Place.objects.count())
+        self.assertEqual(ctx['with_email'], Place.objects.exclude(email='').count())
+        self.assertEqual(ctx['with_phone'], Place.objects.exclude(phone='').count())
+        self.assertEqual(ctx['with_website'], Place.objects.exclude(website='').count())
+        self.assertEqual(ctx['converted'],
+                         Place.objects.filter(lead_status='converted').count())
+
+    def test_pipeline_matches_per_status_counts(self):
+        ctx = self.client.get('/').context
+        for value, _label in Place.LEAD_STATUS_CHOICES:
+            self.assertEqual(
+                ctx['pipeline'][value]['count'],
+                Place.objects.filter(lead_status=value).count(),
+                msg='pipeline count drifted for %s' % value)
+
+    def test_platform_lead_counts_match(self):
+        ctx = self.client.get('/').context
+        for row in ctx['platforms_used']:
+            self.assertEqual(row['leads'],
+                             Place.objects.filter(source=row['key']).count())
+
+    def test_dashboard_stays_within_a_query_budget(self):
+        """It was 36 queries; keep it from creeping back."""
+        with CaptureQueriesContext(connection) as captured:
+            self.client.get('/')
+        self.assertLess(len(captured), 25,
+                        'dashboard query count regressed to %d' % len(captured))

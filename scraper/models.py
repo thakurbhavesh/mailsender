@@ -88,6 +88,16 @@ class Place(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            # Lead Management filters and sorts on these constantly.
+            models.Index(fields=['lead_status']),
+            models.Index(fields=['-lead_score']),
+            models.Index(fields=['category']),
+            models.Index(fields=['email']),
+            models.Index(fields=['source', 'lead_status']),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['enrichment_status']),
+        ]
 
     def __str__(self):
         return self.name
