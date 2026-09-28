@@ -172,4 +172,55 @@ def ai_logs(request):
 
 
 def features_page(request):
-    return render(request, 'scraper/features.html', {})
+    """Guide to every screen, with this installation's real numbers so it
+    reads as a status page rather than a brochure."""
+    from django.conf import settings as dj_settings
+    from django.db.models import Q
+    from scraper.models import (Place, EmailAccount, EmailTemplate, EmailLog,
+                                EmailSequence, SocialTouch, Suppression, CallLog,
+                                LeadAssignment, Meeting, ScrapeJob, SavedReport,
+                                Shift, CallerProfile)
+
+    no_social = Q(facebook='') & Q(instagram='') & Q(linkedin='')
+    sent = EmailLog.objects.filter(status='sent')
+
+    stats = {
+        'leads': Place.objects.count(),
+        'with_email': Place.objects.exclude(email='').count(),
+        'with_phone': Place.objects.exclude(phone='').count(),
+        'with_social': Place.objects.exclude(no_social).count(),
+        'due_followups': Place.objects.filter(next_follow_up__isnull=False).count(),
+        'jobs': ScrapeJob.objects.count(),
+        'templates': EmailTemplate.objects.count(),
+        'accounts': EmailAccount.objects.count(),
+        'sequences': EmailSequence.objects.count(),
+        'emails_sent': sent.count(),
+        'emails_opened': sent.filter(opened_at__isnull=False).count(),
+        'suppressed': Suppression.objects.count(),
+        'social_touches': SocialTouch.objects.count(),
+        'calls': CallLog.objects.count(),
+        'callers': CallerProfile.objects.count(),
+        'assignments': LeadAssignment.objects.count(),
+        'shifts': Shift.objects.count(),
+        'meetings': Meeting.objects.count(),
+        'reports': SavedReport.objects.count(),
+        'scraping_enabled': getattr(dj_settings, 'SCRAPING_ENABLED', True),
+    }
+    stats['open_rate'] = (round(100 * stats['emails_opened'] / stats['emails_sent'], 1)
+                          if stats['emails_sent'] else 0)
+
+    # Anything still needing a one-time setup step before it can be used.
+    todo = []
+    if not stats['accounts']:
+        todo.append(('Connect a Gmail account', 'email_accounts',
+                     'Nothing can be sent until one inbox is connected.'))
+    from scraper.models import GeminiSetting
+    g = GeminiSetting.objects.first()
+    if not (g and g.api_key):
+        todo.append(('Add a Gemini API key', 'ai_settings',
+                     'The AI writer and reply suggestions stay switched off without it.'))
+    if not stats['with_email']:
+        todo.append(('Import or scrape some leads', 'import_home',
+                     'Every outreach screen works from the lead list.'))
+
+    return render(request, 'scraper/features.html', {'stats': stats, 'todo': todo})

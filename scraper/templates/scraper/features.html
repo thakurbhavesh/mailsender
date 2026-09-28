@@ -1,439 +1,496 @@
 {% extends 'scraper/base.html' %}
-{% block heading %}🎁 Features Overview{% endblock %}
-{% block subheading %}Everything LeadHunt can do — Complete B2B Sales Engagement Platform{% endblock %}
+{% block heading %}What LeadHunt Does{% endblock %}
+{% block subheading %}Every screen in the menu, what it is for, and when to use it{% endblock %}
 {% block content %}
 
 <style>
-.feat-section { margin-bottom: 24px; }
-.feat-section h2 {
-    font-size: 18px; margin-bottom: 14px; padding-bottom: 8px;
-    border-bottom: 2px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
+.fx-hero { background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; border-radius:16px;
+           padding:26px 30px; margin-bottom:22px; }
+.fx-hero h2 { color:#fff; margin:0 0 6px; font-size:22px; border:none; }
+.fx-hero p { font-size:14px; opacity:.92; margin:0; line-height:1.6; max-width:70ch; }
+.fx-nums { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-top:20px; }
+.fx-num { background:rgba(255,255,255,.14); padding:12px 14px; border-radius:11px; }
+.fx-num .v { font-size:22px; font-weight:800; line-height:1.2; }
+.fx-num .l { font-size:11px; opacity:.85; text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
+
+.fx-todo { background:#fffbeb; border:1.5px solid #fcd34d; border-radius:14px;
+           padding:18px 20px; margin-bottom:22px; }
+.fx-todo h3 { font-size:15px; margin:0 0 4px; color:#92400e; }
+.fx-todo p { font-size:13px; color:#92400e; margin:0 0 12px; }
+.fx-todo li { list-style:none; padding:9px 0; border-top:1px solid #fde68a; font-size:13.5px; color:#78350f; }
+.fx-todo li:first-of-type { border-top:0; }
+.fx-todo a { color:#92400e; font-weight:700; }
+
+.fx-flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:24px;
+           background:var(--card,#fff); border:1px solid var(--border); border-radius:14px; padding:16px 18px; }
+.fx-step { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+.fx-step .n { width:22px; height:22px; border-radius:50%; background:#4f46e5; color:#fff;
+              display:grid; place-items:center; font-size:11px; font-weight:800; flex-shrink:0; }
+.fx-arrow { color:#cbd5e1; font-weight:700; }
+
+.fx-group { margin-bottom:26px; }
+.fx-group > h2 { font-size:17px; margin:0 0 4px; display:flex; align-items:center; gap:9px; border:none; }
+.fx-group > .blurb { font-size:13px; color:var(--text-muted); margin:0 0 14px; max-width:80ch; line-height:1.6; }
+
+.fx-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:14px; }
+.fx-card { background:var(--card,#fff); border:1.5px solid var(--border); border-radius:14px;
+           padding:16px 18px; transition:border-color .15s, transform .15s; }
+.fx-card:hover { border-color:var(--primary,#4f46e5); transform:translateY(-2px); }
+.fx-card h3 { font-size:14.5px; margin:0 0 6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.fx-card p { font-size:13px; color:var(--text-muted); line-height:1.65; margin:0 0 8px; }
+.fx-use { font-size:12.5px; line-height:1.6; background:#f8fafc; border-radius:8px;
+          padding:9px 11px; margin:0 0 10px; color:#334155; }
+.fx-use b { color:#0f172a; }
+:root[data-theme="dark"] .fx-use { background:#18181b; color:#a1a1aa; }
+:root[data-theme="dark"] .fx-use b { color:#fafafa; }
+.fx-card a.go { font-size:13px; font-weight:700; color:var(--primary,#4f46e5); text-decoration:none; }
+.fx-card a.go:hover { text-decoration:underline; }
+
+.tag { font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px;
+       text-transform:uppercase; letter-spacing:.5px; }
+.tag-new     { background:#ede9fe; color:#5b21b6; }
+.tag-auto    { background:#d1fae5; color:#065f46; }
+.tag-local   { background:#fef3c7; color:#92400e; }
+.tag-setup   { background:#e0e7ff; color:#3730a3; }
+.tag-count   { background:#f1f5f9; color:#475569; }
+
+@media (max-width:640px) {
+    .fx-hero { padding:20px; }
+    .fx-nums { grid-template-columns:1fr 1fr; }
+    .fx-cards { grid-template-columns:1fr; }
 }
-.feat-section h2 .count { background:#eef2ff;color:#3730a3;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700; }
-.feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
-.feat-card {
-    background: white; border-radius: 14px; padding: 18px;
-    border: 1.5px solid var(--border); transition: all .2s;
-    display: flex; gap: 14px; align-items: flex-start;
-}
-.feat-card:hover { border-color: var(--primary); box-shadow: 0 8px 20px rgba(0,0,0,.05); transform: translateY(-2px); }
-.feat-card.live { border-color: #6ee7b7; background: linear-gradient(135deg,#fafcfb,white); }
-.feat-card.new { border-color: #c4b5fd; background: linear-gradient(135deg,#faf5ff,white); position:relative; }
-.feat-card.new::after {
-    content: 'NEW'; position: absolute; top: 8px; right: 8px;
-    background: linear-gradient(135deg,#8b5cf6,#ec4899);
-    color: white; font-size: 9px; font-weight: 800; padding: 3px 8px;
-    border-radius: 999px; letter-spacing: 1px;
-}
-.feat-icon { font-size: 30px; flex-shrink: 0; line-height: 1; }
-.feat-body { flex: 1; min-width: 0; }
-.feat-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-.feat-status { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
-.feat-status.live { background: #d1fae5; color: #065f46; }
-.feat-status.soon { background: #fef3c7; color: #92400e; }
-.feat-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
-.feat-link { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--primary); font-weight: 600; text-decoration: none; }
-.feat-link:hover { text-decoration: underline; }
-.hero {
-    background: linear-gradient(135deg,#6366f1,#ec4899);
-    color: white; border-radius: 16px; padding: 28px 32px;
-    margin-bottom: 24px; box-shadow: 0 10px 30px rgba(99,102,241,0.3);
-}
-.hero h2 { color: white; margin: 0 0 8px; font-size: 24px; }
-.hero-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 14px; margin-top: 18px; }
-.hero-stat { background: rgba(255,255,255,0.15); padding: 14px; border-radius: 12px; backdrop-filter: blur(8px); }
-.hero-stat-n { font-size: 28px; font-weight: 800; line-height: 1; }
-.hero-stat-l { font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 4px; }
 </style>
 
-<div class="hero">
-    <h2>🎯 LeadHunt — Complete B2B Sales Engagement Platform</h2>
-    <p style="opacity:.95;font-size:15px;margin:0;">Scrape leads from any source · Build calling teams · Drip campaigns · Track everything in real-time. India-ready (IST, ₹ INR, WhatsApp).</p>
-    <div class="hero-stats">
-        <div class="hero-stat"><div class="hero-stat-n">12+</div><div class="hero-stat-l">Modules</div></div>
-        <div class="hero-stat"><div class="hero-stat-n">38+</div><div class="hero-stat-l">URL Endpoints</div></div>
-        <div class="hero-stat"><div class="hero-stat-n">21</div><div class="hero-stat-l">Database Models</div></div>
-        <div class="hero-stat"><div class="hero-stat-n">54+</div><div class="hero-stat-l">Pages / Templates</div></div>
+<div class="fx-hero">
+    <h2>A lead goes in one end and a booked meeting comes out the other</h2>
+    <p>Leads are collected, cleaned and scored, then worked by email, social and phone —
+       with every touch recorded against the lead so nothing is sent twice and nothing is
+       forgotten. These are this installation's live numbers.</p>
+    <div class="fx-nums">
+        <div class="fx-num"><div class="v">{{ stats.leads }}</div><div class="l">Leads</div></div>
+        <div class="fx-num"><div class="v">{{ stats.with_email }}</div><div class="l">With email</div></div>
+        <div class="fx-num"><div class="v">{{ stats.with_social }}</div><div class="l">On social</div></div>
+        <div class="fx-num"><div class="v">{{ stats.emails_sent }}</div><div class="l">Emails sent</div></div>
+        <div class="fx-num"><div class="v">{{ stats.open_rate }}%</div><div class="l">Open rate</div></div>
+        <div class="fx-num"><div class="v">{{ stats.calls }}</div><div class="l">Calls logged</div></div>
+        <div class="fx-num"><div class="v">{{ stats.meetings }}</div><div class="l">Meetings</div></div>
     </div>
 </div>
 
-<!-- ═══ LEAD GENERATION ════════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>🕷️ Lead Generation <span class="count">4 sources</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card live">
-            <div class="feat-icon">🗺️</div>
-            <div class="feat-body">
-                <div class="feat-title">Google Maps Scraper <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Selenium-powered scraping with smart scrolling, multi-XPath fallbacks. Pulls phone, rating, hours, photos, claimed status.</div>
-                <a href="{% url 'dashboard' %}" class="feat-link">Start Job →</a>
-            </div>
-        </div>
-        <div class="feat-card live">
-            <div class="feat-icon">📱</div>
-            <div class="feat-body">
-                <div class="feat-title">JustDial Scraper 🇮🇳 <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">India-specific B2B platform. City-wise filtering for local businesses.</div>
-                <a href="{% url 'dashboard' %}" class="feat-link">Start Job →</a>
-            </div>
-        </div>
-        <div class="feat-card live">
-            <div class="feat-icon">🏭</div>
-            <div class="feat-body">
-                <div class="feat-title">IndiaMART Scraper 🇮🇳 <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">B2B suppliers, manufacturers, wholesalers.</div>
-                <a href="{% url 'dashboard' %}" class="feat-link">Start Job →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📥</div>
-            <div class="feat-body">
-                <div class="feat-title">CSV / Excel Import <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Upload from any source — LinkedIn, conferences, vendor lists. Drag-drop file, auto-detect columns, manual mapping, dedupe.</div>
-                <a href="{% url 'import_home' %}" class="feat-link">Upload File →</a>
-            </div>
-        </div>
-        <div class="feat-card live">
-            <div class="feat-icon">➕</div>
-            <div class="feat-body">
-                <div class="feat-title">Quick Add Lead <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Add a single lead manually with all fields.</div>
-                <a href="{% url 'quick_add' %}" class="feat-link">Add Lead →</a>
-            </div>
-        </div>
-        <div class="feat-card live">
-            <div class="feat-icon">✨</div>
-            <div class="feat-body">
-                <div class="feat-title">Auto Enrichment <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Scrape websites for emails + social links. Validates emails. Auto-scores each lead 0-100.</div>
-            </div>
-        </div>
-    </div>
+{% if todo %}
+<div class="fx-todo">
+    <h3>Before you can send</h3>
+    <p>These are one-time setup steps. Everything else is ready.</p>
+    <ul style="margin:0;padding:0;">
+        {% for label, url, why in todo %}
+        <li><a href="{% url url %}">{{ label }} →</a> — {{ why }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="fx-flow">
+    <span class="fx-step"><span class="n">1</span> Collect leads</span>
+    <span class="fx-arrow">→</span>
+    <span class="fx-step"><span class="n">2</span> Clean &amp; score</span>
+    <span class="fx-arrow">→</span>
+    <span class="fx-step"><span class="n">3</span> Reach out</span>
+    <span class="fx-arrow">→</span>
+    <span class="fx-step"><span class="n">4</span> Track &amp; follow up</span>
+    <span class="fx-arrow">→</span>
+    <span class="fx-step"><span class="n">5</span> Book the meeting</span>
 </div>
 
-<!-- ═══ CALLING TEAM ═══════════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>📞 Calling Team Suite <span class="count">8 modules</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card new">
-            <div class="feat-icon">🎯</div>
-            <div class="feat-body">
-                <div class="feat-title">Manual Lead Assignment <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Filter by area/city/category/source/score → pick caller → bulk assign. Shows caller's current load.</div>
-                <a href="{% url 'manual_assign' %}" class="feat-link">Assign Leads →</a>
-            </div>
+<!-- ═══ LEADS ═══ -->
+<div class="fx-group">
+    <h2>🎯 Leads</h2>
+    <p class="blurb">The day-to-day working screens. This is where you decide who to contact next.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Lead Management <span class="tag tag-new">New</span></h3>
+            <p>Every lead with its full outreach footprint in one row — emails sent, opens, clicks,
+               calls, owner, and when the follow-up is due.</p>
+            <div class="fx-use"><b>Use it to answer:</b> who is due today, who was emailed but never
+               opened, and who has never been contacted at all. Tick rows to change status, schedule
+               follow-ups or suppress in bulk.</div>
+            <a class="go" href="{% url 'lead_management' %}">Open Lead Management →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">⚙️</div>
-            <div class="feat-body">
-                <div class="feat-title">Auto Assignment <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">100 leads auto-assigned per caller on login. Smart batch refill when pending hits 0. Best leads first by score.</div>
-            </div>
+        <div class="fx-card">
+            <h3>Data Explorer</h3>
+            <p>The raw table of every field on every lead, with filters and sorting.</p>
+            <div class="fx-use"><b>Use it when</b> you need the underlying data rather than the
+               outreach view — checking what was scraped, or exporting a slice.</div>
+            <a class="go" href="{% url 'data_view' %}">Open Data Explorer →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📊</div>
-            <div class="feat-body">
-                <div class="feat-title">Live Monitor <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Real-time view of who's online, today's calls, conversions. Auto-refresh every 30s.</div>
-                <a href="{% url 'admin_monitor' %}" class="feat-link">Open Monitor →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">👥</div>
-            <div class="feat-body">
-                <div class="feat-title">Team Members <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Add/edit callers with custom quotas. 3 roles: Admin / Manager / Caller.</div>
-                <a href="{% url 'members_list' %}" class="feat-link">Manage →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🌳</div>
-            <div class="feat-body">
-                <div class="feat-title">Team Hierarchy <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Manager → Caller reporting structure. Managers see only their team.</div>
-                <a href="{% url 'team_hierarchy' %}" class="feat-link">View Tree →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">⏰</div>
-            <div class="feat-body">
-                <div class="feat-title">Shift Management <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Define shifts (Morning, Evening), assign callers with effective dates. Live "Active Now" indicator.</div>
-                <a href="{% url 'shifts_list' %}" class="feat-link">Manage Shifts →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🗓️</div>
-            <div class="feat-body">
-                <div class="feat-title">Attendance + Breaks <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Auto attendance on login. Calendar view per month. Break types (Short/Lunch/Meeting). Multi-session support.</div>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🎯</div>
-            <div class="feat-body">
-                <div class="feat-title">Goals & Targets <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Monthly targets per caller (calls/conversions/revenue). Real-time progress bars.</div>
-                <a href="{% url 'goals_list' %}" class="feat-link">Set Goals →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">💰</div>
-            <div class="feat-body">
-                <div class="feat-title">Incentive Calculator 🇮🇳 <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">₹ per conversion/interested/answered + bonus threshold. Auto-calc monthly payouts in INR.</div>
-                <a href="{% url 'incentives' %}" class="feat-link">Calculate →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Quick Add</h3>
+            <p>Add one lead by hand.</p>
+            <div class="fx-use"><b>Use it for</b> a referral or a business someone mentioned —
+               anything that did not come from a scrape or an import.</div>
+            <a class="go" href="{% url 'quick_add' %}">Open Quick Add →</a>
         </div>
     </div>
 </div>
 
-<!-- ═══ CALLER WORKSPACE ══════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>📱 Caller Workspace <span class="count">Power Features</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card new">
-            <div class="feat-icon">📋</div>
-            <div class="feat-body">
-                <div class="feat-title">Smart Lead Cards <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Per-lead card with: Big call button, WhatsApp, Email, Site. 9 quick-outcome buttons. Click any → status auto-updates.</div>
-            </div>
+<!-- ═══ LEAD DATA ═══ -->
+<div class="fx-group">
+    <h2>🗂️ Lead Data</h2>
+    <p class="blurb">Getting leads in and out. You touch these occasionally, not daily.</p>
+    <div class="fx-cards">
+        {% if stats.scraping_enabled %}
+        <div class="fx-card">
+            <h3>Scrape Jobs <span class="tag tag-local">Local only</span></h3>
+            <p>Pulls businesses from Google Maps by search term and city — name, phone, website,
+               rating, reviews, hours and location.</p>
+            <div class="fx-use"><b>Runs on your own machine</b> because it drives a real Chrome
+               browser, and Google serves captchas to datacenter IPs. Push the results to the
+               server afterwards with <code>python manage.py sync_to_prod</code>.</div>
+            <a class="go" href="{% url 'jobs' %}">Open Scrape Jobs →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📝</div>
-            <div class="feat-body">
-                <div class="feat-title">Auto-Save Notes <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Type notes — save automatically 0.8s after stop typing. Green dot = saved.</div>
-            </div>
+        {% else %}
+        <div class="fx-card">
+            <h3>Scraping <span class="tag tag-local">Not on this server</span></h3>
+            <p>Scraping drives a real Chrome browser, which this server does not have — and a
+               datacenter IP gets captchas from Google Maps anyway.</p>
+            <div class="fx-use"><b>Run it on your own machine</b>, then push the results here with
+               <code>python manage.py sync_to_prod</code>. Only leads travel; nothing you have
+               changed on the server is overwritten.</div>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🎤</div>
-            <div class="feat-body">
-                <div class="feat-title">Voice Notes <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Click mic → speak in Hindi/English → text appears + auto-saves. Web Speech API powered.</div>
-            </div>
+        {% endif %}
+        <div class="fx-card">
+            <h3>Import CSV/Excel</h3>
+            <p>Upload a spreadsheet and map its columns onto lead fields.</p>
+            <div class="fx-use"><b>Use it for</b> bought lists, exports from another tool, or a
+               client's own customer list.</div>
+            <a class="go" href="{% url 'import_home' %}">Open Import →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">@</div>
-            <div class="feat-body">
-                <div class="feat-title">@Mentions <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Type "@bhavesh" in notes → teammate gets notification with link to lead.</div>
-            </div>
+        <div class="fx-card">
+            <h3>Deduplication</h3>
+            <p>Finds the same business appearing twice and merges the records.</p>
+            <div class="fx-use"><b>Run it after</b> every large import or scrape. Duplicates mean
+               the same company gets emailed twice, which reads as spam.</div>
+            <a class="go" href="{% url 'dedup_home' %}">Open Deduplication →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">⏰</div>
-            <div class="feat-body">
-                <div class="feat-title">Callback Reminders <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Schedule callbacks with datetime. Banner alert when due. Click goes to lead.</div>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📱</div>
-            <div class="feat-body">
-                <div class="feat-title">Mobile + PWA <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Install as app on phone. Hamburger sidebar. Tap phone number → native dialer.</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══ ANALYTICS ═════════════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>📊 Analytics <span class="count">4 dashboards</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card new">
-            <div class="feat-icon">🏆</div>
-            <div class="feat-body">
-                <div class="feat-title">Caller Leaderboard <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Podium for top 3 🥇🥈🥉 + full rankings table. Today/Week/Month/Custom range filters.</div>
-                <a href="{% url 'analytics_leaderboard' %}" class="feat-link">View →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🪜</div>
-            <div class="feat-body">
-                <div class="feat-title">Conversion Funnel <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Scraped → Assigned → Called → Answered → Interested → Converted. Drop-off % at each stage.</div>
-                <a href="{% url 'analytics_funnel' %}" class="feat-link">View →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🔥</div>
-            <div class="feat-body">
-                <div class="feat-title">Activity Heatmap <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Day × Hour grid showing call volume + conversions. "Best time to call" insights.</div>
-                <a href="{% url 'analytics_heatmap' %}" class="feat-link">View →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📈</div>
-            <div class="feat-body">
-                <div class="feat-title">Custom Report Builder <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">4 entities × custom dimensions × metrics × 4 chart types. Save, share, export CSV.</div>
-                <a href="{% url 'reports_list' %}" class="feat-link">Build Report →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Export</h3>
+            <p>Download the current filtered set as Excel or CSV, choosing which columns to include.</p>
+            <div class="fx-use"><b>Use it for</b> handing a list to someone outside the system, or
+               keeping a snapshot before a bulk change.</div>
+            <a class="go" href="{% url 'export_config' %}">Open Export →</a>
         </div>
     </div>
 </div>
 
-<!-- ═══ EMAIL ═════════════════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>📧 Email Outreach <span class="count">5 modules</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card live">
-            <div class="feat-icon">🚀</div>
-            <div class="feat-body">
-                <div class="feat-title">Compose & Send <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Single or bulk send via Gmail SMTP. Throttled. Daily quota tracking.</div>
-                <a href="{% url 'compose_bulk' %}" class="feat-link">Compose →</a>
-            </div>
+<!-- ═══ OUTREACH ═══ -->
+<div class="fx-group">
+    <h2>✉️ Outreach</h2>
+    <p class="blurb">Where the actual selling happens — email, social and WhatsApp, with every
+       send recorded.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Compose &amp; Send</h3>
+            <p>Send a template to one lead or to a filtered batch. Merge fields fill in each
+               business's own details, and sending is throttled so it does not look like a blast.</p>
+            <div class="fx-use"><b>Every send automatically</b> gets an open pixel, click-tracked
+               links, an unsubscribe link, and a check against the suppression list.
+               {{ stats.templates }} template{{ stats.templates|pluralize }} ready to use.</div>
+            <a class="go" href="{% url 'compose_bulk' %}">Open Compose →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📨</div>
-            <div class="feat-body">
-                <div class="feat-title">Drip Sequences <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Multi-step campaigns. "Send template A → wait 3 days → send template B". Auto-stop on reply/conversion.</div>
-                <a href="{% url 'sequences_list' %}" class="feat-link">Sequences →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Drip Sequences <span class="tag tag-auto">Automatic</span></h3>
+            <p>Multi-step campaigns: first email today, follow-up in 3 days, another in a week.
+               A background timer sends what is due every 10 minutes.</p>
+            <div class="fx-use"><b>Stops by itself</b> when the lead replies, changes status, or
+               unsubscribes — so nobody gets a "just following up" after they already said yes.
+               Most replies to cold email come from the second and third touch, not the first.</div>
+            <a class="go" href="{% url 'sequences_list' %}">Open Sequences →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📊</div>
-            <div class="feat-body">
-                <div class="feat-title">Open + Click Tracking <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Invisible pixel tracks opens. Click rewriter logs every link tap with timestamp.</div>
-            </div>
+        <div class="fx-card">
+            <h3>Social Outreach <span class="tag tag-new">New</span></h3>
+            <p>Work the {{ stats.with_social }} leads that have a Facebook, Instagram or LinkedIn
+               profile. Buttons open the profile and record the visit on the way.</p>
+            <div class="fx-use"><b>Social has no open tracking</b>, so messages and replies are
+               logged with one click instead. A reply moves the lead to Interested automatically,
+               and every touch shows on the lead's timeline.</div>
+            <a class="go" href="{% url 'social_outreach' %}">Open Social Outreach →</a>
         </div>
-        <div class="feat-card live">
-            <div class="feat-icon">📝</div>
-            <div class="feat-body">
-                <div class="feat-title">Email Templates <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Variable substitution: {{name}}, {{category}}, {{city}}. Preview before send.</div>
-                <a href="{% url 'email_templates' %}" class="feat-link">Templates →</a>
-            </div>
+        <div class="fx-card">
+            <h3>WhatsApp Bulk</h3>
+            <p>Builds pre-filled WhatsApp links for leads that have a phone number, so you can
+               open a chat with the message already typed.</p>
+            <div class="fx-use"><b>Best for</b> Indian SMBs, who answer WhatsApp far more reliably
+               than email. Log what happened from the Social Outreach screen.</div>
+            <a class="go" href="{% url 'whatsapp_bulk' %}">Open WhatsApp Bulk →</a>
         </div>
-        <div class="feat-card live">
-            <div class="feat-icon">📜</div>
-            <div class="feat-body">
-                <div class="feat-title">Email History <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Every email logged with status, account, recipient, opens, clicks.</div>
-                <a href="{% url 'email_history' %}" class="feat-link">History →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Email History</h3>
+            <p>Every message ever sent, with its delivery status, opens, clicks and any error.</p>
+            <div class="fx-use"><b>Use it to check</b> whether a specific mail actually left, and
+               what the recipient did with it.
+               {{ stats.emails_sent }} sent so far{% if stats.emails_sent %}, {{ stats.open_rate }}% opened{% endif %}.</div>
+            <a class="go" href="{% url 'email_history' %}">Open Email History →</a>
         </div>
-    </div>
-</div>
-
-<!-- ═══ CALENDAR & MEETINGS ═══════════════════════════════════ -->
-<div class="feat-section">
-    <h2>📅 Calendar Booking <span class="count">Calendly-like</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card new">
-            <div class="feat-icon">⚙️</div>
-            <div class="feat-body">
-                <div class="feat-title">Personal Booking Page <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Calendly-style. Each user gets <code>/meet/&lt;your-slug&gt;/</code>. Set working hours, slot duration, buffer, advance days.</div>
-                <a href="{% url 'my_schedule' %}" class="feat-link">Set Up →</a>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">📅</div>
-            <div class="feat-body">
-                <div class="feat-title">My Meetings <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Upcoming + past meetings. Mark done/no-show/cancel. Auto-links to existing leads by email.</div>
-                <a href="{% url 'meetings_list' %}" class="feat-link">View →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Suppression List <span class="tag tag-new">New</span></h3>
+            <p>Addresses that must never be emailed again — people who unsubscribed, hard bounces,
+               and anyone you add by hand.</p>
+            <div class="fx-use"><b>Enforced at send time</b>, so a suppressed address cannot be
+               mailed even by accident from a bulk run or a sequence. Ignoring opt-outs is what
+               gets a sending domain blacklisted.
+               {{ stats.suppressed }} address{{ stats.suppressed|pluralize:"es" }} blocked.</div>
+            <a class="go" href="{% url 'suppression_list' %}">Open Suppression List →</a>
         </div>
     </div>
 </div>
 
-<!-- ═══ AI ═══════════════════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>🤖 AI (Gemini) <span class="count">Powered</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card live">
-            <div class="feat-icon">✍️</div>
-            <div class="feat-body">
-                <div class="feat-title">AI Email Writer <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Gemini generates personalized cold emails per lead. Custom tone, length.</div>
-                <a href="{% url 'ai_writer' %}" class="feat-link">Generate →</a>
-            </div>
+<!-- ═══ CALLING TEAM ═══ -->
+<div class="fx-group">
+    <h2>📞 Calling Team</h2>
+    <p class="blurb">For running a team of callers — assignment, attendance and targets.
+       {{ stats.callers }} caller{{ stats.callers|pluralize }} set up, {{ stats.calls }} call{{ stats.calls|pluralize }} logged.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Team Members</h3>
+            <p>Create caller accounts and set each one's role — caller, manager or admin.</p>
+            <div class="fx-use"><b>Callers see only</b> their own workspace: the leads assigned to
+               them, on a phone-friendly screen. They cannot reach the admin side.</div>
+            <a class="go" href="{% url 'members_list' %}">Open Team Members →</a>
         </div>
-        <div class="feat-card live">
-            <div class="feat-icon">💬</div>
-            <div class="feat-body">
-                <div class="feat-title">Reply Assistant <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Paste a reply, get suggested response based on tone + intent.</div>
-                <a href="{% url 'ai_reply' %}" class="feat-link">Open →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Assign Leads</h3>
+            <p>Hand a batch of leads to a caller. The same lead cannot go to two people.</p>
+            <div class="fx-use"><b>Filter first, then assign</b> — for example every lead with a
+               phone number that has not been called. {{ stats.assignments }} assignment{{ stats.assignments|pluralize }} made.</div>
+            <a class="go" href="{% url 'manual_assign' %}">Open Assign Leads →</a>
         </div>
-    </div>
-</div>
-
-<!-- ═══ DATA QUALITY & TOOLS ══════════════════════════════════ -->
-<div class="feat-section">
-    <h2>🧹 Data Quality <span class="count">Power Tools</span></h2>
-    <div class="feat-grid">
-        <div class="feat-card new">
-            <div class="feat-icon">🔍</div>
-            <div class="feat-body">
-                <div class="feat-title">Deduplication <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Find duplicates by phone/email/name. Smart merge fills empty fields from duplicates.</div>
-                <a href="{% url 'dedup_home' %}" class="feat-link">Find Dupes →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Hierarchy</h3>
+            <p>Sets who reports to whom, so a manager sees their own team's numbers.</p>
+            <div class="fx-use"><b>Only matters</b> once you have more than a handful of callers.</div>
+            <a class="go" href="{% url 'team_hierarchy' %}">Open Hierarchy →</a>
         </div>
-        <div class="feat-card live">
-            <div class="feat-icon">📥</div>
-            <div class="feat-body">
-                <div class="feat-title">Excel/CSV Export <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Export filtered leads to Excel or CSV with customized columns.</div>
-                <a href="{% url 'export_config' %}" class="feat-link">Export →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Shifts &amp; Attendance</h3>
+            <p>Shift timings, check-in and check-out, break tracking and a monthly attendance
+               calendar.</p>
+            <div class="fx-use"><b>Callers check in</b> from their own screen; Live Monitor shows
+               who is working right now.</div>
+            <a class="go" href="{% url 'shifts_list' %}">Open Shifts →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">💬</div>
-            <div class="feat-body">
-                <div class="feat-title">WhatsApp Bulk <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Generate personalized WhatsApp links for any number of leads.</div>
-                <a href="{% url 'whatsapp_bulk' %}" class="feat-link">Open →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Goals</h3>
+            <p>Monthly targets per caller for calls, conversions and revenue.</p>
+            <div class="fx-use"><b>Progress shows</b> on the leaderboard, so the team can see where
+               they stand without being asked.</div>
+            <a class="go" href="{% url 'goals_list' %}">Open Goals →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">🔔</div>
-            <div class="feat-body">
-                <div class="feat-title">Notifications <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">Bell with unread count. @mention notifications. Deal-closed alerts to admins.</div>
-                <a href="{% url 'notifications_list' %}" class="feat-link">View →</a>
-            </div>
+        <div class="fx-card">
+            <h3>Incentives</h3>
+            <p>Rules that turn results into payouts — so much per conversion, bonus over target.</p>
+            <div class="fx-use"><b>Calculated from</b> logged calls and conversions, so payout is
+               not a separate spreadsheet.</div>
+            <a class="go" href="{% url 'incentives' %}">Open Incentives →</a>
         </div>
     </div>
 </div>
 
-<!-- ═══ INDIA-SPECIFIC ════════════════════════════════════════ -->
-<div class="feat-section">
-    <h2>🇮🇳 India-Specific Features</h2>
-    <div class="feat-grid">
-        <div class="feat-card new">
-            <div class="feat-icon">⏰</div>
-            <div class="feat-body">
-                <div class="feat-title">IST Timezone (Default) <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">All times display in Asia/Kolkata IST. Attendance, meetings, call logs.</div>
-            </div>
+<!-- ═══ MEETINGS ═══ -->
+<div class="fx-group">
+    <h2>📅 Meetings</h2>
+    <p class="blurb">The point of all the outreach. {{ stats.meetings }} meeting{{ stats.meetings|pluralize }} booked so far.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Booking Page</h3>
+            <p>A public page where a prospect picks a slot from your availability — no back and
+               forth about timings.</p>
+            <div class="fx-use"><b>Put the link in your emails.</b> "Reply if interested" loses
+               people; a link they can click while they are still reading does not.</div>
+            <a class="go" href="{% url 'my_schedule' %}">Open Booking Page →</a>
         </div>
-        <div class="feat-card new">
-            <div class="feat-icon">₹</div>
-            <div class="feat-body">
-                <div class="feat-title">Indian Currency Format <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">₹1,23,456 grouping. Incentive payouts in INR.</div>
-            </div>
-        </div>
-        <div class="feat-card new">
-            <div class="feat-icon">💬</div>
-            <div class="feat-body">
-                <div class="feat-title">WhatsApp-First UI <span class="feat-status live">Live</span></div>
-                <div class="feat-desc">WhatsApp button on every lead. Indian phone format (+91 prefix).</div>
-            </div>
+        <div class="fx-card">
+            <h3>My Meetings</h3>
+            <p>Everything booked, with the lead it came from, and cancel or reschedule links.</p>
+            <div class="fx-use"><b>Bookings link back</b> to the lead, so the meeting shows on that
+               lead's timeline next to the email that produced it.</div>
+            <a class="go" href="{% url 'meetings_list' %}">Open My Meetings →</a>
         </div>
     </div>
 </div>
 
+<!-- ═══ ANALYTICS ═══ -->
+<div class="fx-group">
+    <h2>📊 Analytics</h2>
+    <p class="blurb">What is working and what is not.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Leaderboard</h3>
+            <p>Callers ranked by calls, conversions and goal progress.</p>
+            <div class="fx-use"><b>Use it for</b> daily stand-ups and to spot who needs help before
+               the month ends.</div>
+            <a class="go" href="{% url 'analytics_leaderboard' %}">Open Leaderboard →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Funnel</h3>
+            <p>How many leads move from New → Contacted → Interested → Converted.</p>
+            <div class="fx-use"><b>Shows where you lose people.</b> A wide top and a narrow middle
+               means the outreach is reaching the wrong businesses.</div>
+            <a class="go" href="{% url 'analytics_funnel' %}">Open Funnel →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Heatmap</h3>
+            <p>Activity by day of the week and hour of the day.</p>
+            <div class="fx-use"><b>Tells you when</b> your market actually responds, so you send
+               and call at those hours instead of guessing.</div>
+            <a class="go" href="{% url 'analytics_heatmap' %}">Open Heatmap →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Custom Reports</h3>
+            <p>Build a report by picking fields, filters and grouping, then save it to re-run.</p>
+            <div class="fx-use"><b>Use it for</b> questions the fixed dashboards do not answer —
+               "converted leads by category this quarter".
+               {{ stats.reports }} saved report{{ stats.reports|pluralize }}.</div>
+            <a class="go" href="{% url 'reports_list' %}">Open Custom Reports →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MONITORING ═══ -->
+<div class="fx-group">
+    <h2>🟢 Live Monitor &amp; Dashboard</h2>
+    <p class="blurb">The two overview screens.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Dashboard</h3>
+            <p>Totals, pipeline by stage, top categories, hot leads and recent activity.</p>
+            <div class="fx-use"><b>Your morning screen</b> — where the numbers stand and what
+               happened since yesterday.</div>
+            <a class="go" href="{% url 'dashboard' %}">Open Dashboard →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Live Monitor</h3>
+            <p>Who is checked in right now, what they are working on and today's call counts.</p>
+            <div class="fx-use"><b>Use it during</b> calling hours to see activity as it happens
+               rather than reading about it tomorrow.</div>
+            <a class="go" href="{% url 'admin_monitor' %}">Open Live Monitor →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Notifications</h3>
+            <p>Alerts for conversions, @mentions in notes and other events worth knowing about.</p>
+            <div class="fx-use"><b>Mention a teammate</b> with @name in a lead note and they are
+               notified with a link straight to that lead.</div>
+            <a class="go" href="{% url 'notifications_list' %}">Open Notifications →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ AI ═══ -->
+<div class="fx-group">
+    <h2>🤖 AI Assistant</h2>
+    <p class="blurb">Google Gemini, used where writing by hand is the slow part.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>AI Writer</h3>
+            <p>Writes a cold email for a specific lead using what is known about it — category,
+               website, rating, review count and description.</p>
+            <div class="fx-use"><b>Why it matters:</b> a generic template and a line that shows you
+               actually looked at their business get very different reply rates. Also suggests
+               subject lines and rewrites text you have already drafted.</div>
+            <a class="go" href="{% url 'ai_writer' %}">Open AI Writer →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Reply Assistant</h3>
+            <p>Paste what a prospect wrote and get a suggested response aimed at booking a call.</p>
+            <div class="fx-use"><b>Use it when</b> a reply needs answering quickly — speed of reply
+               matters more than polish at this stage.</div>
+            <a class="go" href="{% url 'ai_reply' %}">Open Reply Assistant →</a>
+        </div>
+        <div class="fx-card">
+            <h3>AI Email Extraction</h3>
+            <p>During enrichment, the AI reads a business's website and pulls out the contact
+               address when the usual patterns fail.</p>
+            <div class="fx-use"><b>Runs automatically</b> as part of enrichment — nothing to switch
+               on beyond the API key.</div>
+            <a class="go" href="{% url 'ai_logs' %}">View AI usage log →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ SETUP ═══ -->
+<div class="fx-group">
+    <h2>⚙️ Setup</h2>
+    <p class="blurb">Configure once, then leave alone.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Gmail Accounts <span class="tag tag-setup">Required</span></h3>
+            <p>Connect sending inboxes with a Gmail App Password, each with its own daily limit.</p>
+            <div class="fx-use"><b>Start low and build up.</b> A new sending address that suddenly
+               posts 400 mails a day lands in spam — 20 a day for the first week, then raise it.
+               {{ stats.accounts }} account{{ stats.accounts|pluralize }} connected.</div>
+            <a class="go" href="{% url 'email_accounts' %}">Open Gmail Accounts →</a>
+        </div>
+        <div class="fx-card">
+            <h3>Email Templates</h3>
+            <p>Reusable subject and body with merge fields — <code>{% templatetag openvariable %}name{% templatetag closevariable %}</code>,
+               <code>{% templatetag openvariable %}category{% templatetag closevariable %}</code>,
+               <code>{% templatetag openvariable %}city{% templatetag closevariable %}</code> and more.</p>
+            <div class="fx-use"><b>Templates are tracked</b> individually, so Email History shows
+               which one actually gets opened.</div>
+            <a class="go" href="{% url 'email_templates' %}">Open Templates →</a>
+        </div>
+        <div class="fx-card">
+            <h3>AI Settings</h3>
+            <p>Your Gemini API key, model choice and usage tracking.</p>
+            <div class="fx-use"><b>Every AI feature</b> stays switched off until a key is saved here.</div>
+            <a class="go" href="{% url 'ai_settings' %}">Open AI Settings →</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ BEHIND THE SCENES ═══ -->
+<div class="fx-group">
+    <h2>Working quietly in the background</h2>
+    <p class="blurb">Things that run without anyone opening a screen.</p>
+    <div class="fx-cards">
+        <div class="fx-card">
+            <h3>Open &amp; click tracking</h3>
+            <p>An invisible pixel records opens; links are rewritten to record clicks before
+               forwarding the reader on.</p>
+            <div class="fx-use"><b>Caveat worth knowing:</b> opens only register if the recipient
+               loads images. Clicks are the more reliable signal.</div>
+        </div>
+        <div class="fx-card">
+            <h3>Sequence sender</h3>
+            <p>A timer checks every 10 minutes for sequence steps that have come due and sends them.</p>
+            <div class="fx-use"><b>It takes a lock</b>, so a slow batch cannot overlap the next run
+               and send the same step twice.</div>
+        </div>
+        <div class="fx-card">
+            <h3>Bounce handling</h3>
+            <p>When a mail server rejects an address outright, that address is recorded as bounced
+               and added to the suppression list.</p>
+            <div class="fx-use"><b>Why it matters:</b> repeatedly mailing dead addresses is one of
+               the fastest ways to end up in spam folders for everyone else too.</div>
+        </div>
+        <div class="fx-card">
+            <h3>Enrichment</h3>
+            <p>Visits each lead's website and pulls out email addresses and social profiles,
+               checking that the mail domain actually exists.</p>
+            <div class="fx-use"><b>This is where</b> the {{ stats.with_email }} email addresses and
+               {{ stats.with_social }} social profiles came from.</div>
+        </div>
+        <div class="fx-card">
+            <h3>Lead scoring</h3>
+            <p>Scores each lead 0–100 on how complete its data is and how well the business rates.</p>
+            <div class="fx-use"><b>Sort by score</b> to work the most contactable leads first
+               instead of going alphabetically.</div>
+        </div>
+        <div class="fx-card">
+            <h3>Local to server sync</h3>
+            <p>Pushes leads from your machine to this server over an authenticated API.</p>
+            <div class="fx-use"><b>Only leads travel.</b> On a lead that already exists here, sync
+               fills empty fields and never overwrites a status, note or history added on the
+               server.</div>
+        </div>
+    </div>
+</div>
 {% endblock %}
