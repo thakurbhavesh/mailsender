@@ -1,0 +1,116 @@
+{% extends 'scraper/calling/caller_base.html' %}
+{% block title %}My History — Calling{% endblock %}
+{% block page_title %}📊 My History{% endblock %}
+{% block page_subtitle %}Date-wise performance & attendance{% endblock %}
+
+{% block content %}
+
+<!-- Filter -->
+<form method="get" class="filter-row">
+    <div class="form-group" style="flex:0 0 200px;">
+        <label>Period</label>
+        <select name="preset" onchange="this.form.submit()">
+            <option value="today" {% if preset == 'today' %}selected{% endif %}>Today</option>
+            <option value="yesterday" {% if preset == 'yesterday' %}selected{% endif %}>Yesterday</option>
+            <option value="last7" {% if preset == 'last7' %}selected{% endif %}>Last 7 Days</option>
+            <option value="last30" {% if preset == 'last30' %}selected{% endif %}>Last 30 Days</option>
+            <option value="custom" {% if preset == 'custom' %}selected{% endif %}>Custom Range</option>
+        </select>
+    </div>
+    {% if preset == 'custom' %}
+    <div class="form-group">
+        <label>From</label>
+        <input type="date" name="start" value="{{ start|date:'Y-m-d' }}">
+    </div>
+    <div class="form-group">
+        <label>To</label>
+        <input type="date" name="end" value="{{ end|date:'Y-m-d' }}">
+    </div>
+    <div class="form-group" style="flex:0 0 auto;">
+        <button type="submit" class="btn">Apply</button>
+    </div>
+    {% endif %}
+</form>
+
+<!-- Totals -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Assigned</div>
+        <div class="stat-value">{{ totals.assigned }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value" style="color:#10b981;">{{ totals.done }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Calls</div>
+        <div class="stat-value" style="color:#6366f1;">{{ totals.calls }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Converted</div>
+        <div class="stat-value" style="color:#16a34a;">{{ totals.converted }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Interested</div>
+        <div class="stat-value" style="color:#be185d;">{{ totals.interested }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Hours Worked</div>
+        <div class="stat-value" style="color:#f59e0b;">{{ totals.minutes|floatformat:0|default:0 }}m</div>
+    </div>
+</div>
+
+<!-- Day-by-day breakdown -->
+<div class="card">
+    <h2>📅 Day-by-Day</h2>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Hours</th>
+                    <th>Assigned</th>
+                    <th>Done</th>
+                    <th>Calls</th>
+                    <th>Interested</th>
+                    <th>Converted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in daily %}
+                <tr>
+                    <td><strong>{{ d.date|date:"D, d M Y" }}</strong></td>
+                    <td>{% if d.attendance %}{{ d.attendance.check_in|date:"h:i A" }}{% else %}—{% endif %}</td>
+                    <td>{% if d.attendance and d.attendance.check_out %}{{ d.attendance.check_out|date:"h:i A" }}{% else %}—{% endif %}</td>
+                    <td>{% if d.attendance %}{{ d.attendance.hours_worked_display }}{% else %}—{% endif %}</td>
+                    <td>{{ d.assigned }}</td>
+                    <td style="color:#10b981; font-weight:700;">{{ d.done }}</td>
+                    <td>{{ d.calls }}</td>
+                    <td style="color:#be185d;">{{ d.interested }}</td>
+                    <td style="color:#16a34a; font-weight:700;">{{ d.converted }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" style="text-align:center; padding:30px; color:#64748b;">No activity in this period.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Outcome breakdown -->
+{% if outcome_breakdown %}
+<div class="card">
+    <h2>🎯 Outcome Breakdown</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+        {% for o in outcome_breakdown %}
+        <div style="background:#f8fafc; padding:14px; border-radius:10px; border:1px solid #e2e8f0;">
+            <div style="text-transform:capitalize; font-size:13px; color:#64748b; font-weight:600;">{{ o.outcome|cut:'_'|title }}</div>
+            <div style="font-size:24px; font-weight:800; margin-top:4px;">{{ o.c }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

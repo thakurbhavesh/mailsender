@@ -1,0 +1,76 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🔐 Gmail Accounts{% endblock %}
+{% block subheading %}Manage SMTP credentials{% endblock %}
+{% block content %}
+
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header">
+        <h2>Configured Accounts <span class="h2-count">{{ accounts|length }}</span></h2>
+        <a href="{% url 'email_account_new' %}" class="btn btn-primary">+ Add Gmail Account</a>
+    </div>
+    {% if accounts %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th>Account</th><th>Status</th><th>Quota Today</th><th>SMTP</th><th>Test</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        {% for a in accounts %}
+            <tr>
+                <td>
+                    <strong>{{ a.email }}</strong>
+                    <div style="font-size:12px;color:var(--text-muted);">{{ a.name }}{% if a.sender_name %} · From: {{ a.sender_name }}{% endif %}</div>
+                </td>
+                <td>
+                    {% if a.is_default %}<span class="badge badge-completed">Default</span>{% endif %}
+                    {% if a.is_active %}<span class="badge badge-running">Active</span>{% else %}<span class="badge badge-failed">Disabled</span>{% endif %}
+                </td>
+                <td>
+                    <strong>{{ a.sent_today }}</strong> / {{ a.daily_limit }}
+                    <div class="cat-progress" style="margin-top:4px;width:120px;">
+                        <div class="cat-progress-fill" style="width:{% widthratio a.sent_today a.daily_limit 100 %}%"></div>
+                    </div>
+                </td>
+                <td style="font-size:12px;color:var(--text-muted);">{{ a.smtp_host }}:{{ a.smtp_port }}{% if a.use_tls %} · TLS{% endif %}</td>
+                <td>
+                    <form method="post" action="{% url 'email_account_test' a.id %}" style="display:flex;gap:4px;">
+                        {% csrf_token %}
+                        <input type="email" name="test_email" placeholder="recipient" value="{{ a.email }}" style="width:140px;font-size:12px;padding:6px 8px;">
+                        <button type="submit" class="btn btn-secondary btn-sm">Test</button>
+                    </form>
+                </td>
+                <td>
+                    <a href="{% url 'email_account_edit' a.id %}" class="btn btn-secondary btn-sm">Edit</a>
+                    <form method="post" action="{% url 'email_account_delete' a.id %}" style="display:inline;" onsubmit="return confirm('Delete this account?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+        <div class="empty">
+            <div class="empty-icon">🔐</div>
+            <h3 style="margin-bottom:8px;">No accounts yet</h3>
+            <p>Add your Gmail account using an App Password to start sending.</p>
+            <a href="{% url 'email_account_new' %}" class="btn btn-primary" style="margin-top:14px;">+ Add Gmail Account</a>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card" style="background:linear-gradient(135deg,#fef3c7,#fffbeb);border-color:#fcd34d;">
+    <h2>⚠️ Important: Use Gmail App Password</h2>
+    <p style="color:#92400e;font-size:14px;line-height:1.7;">
+        Gmail blocks regular passwords for SMTP. You <strong>must</strong> generate a 16-character <strong>App Password</strong>:
+    </p>
+    <ol style="padding-left:24px;color:#92400e;font-size:14px;line-height:1.8;margin-top:8px;">
+        <li>Enable 2-Step Verification in your Google Account</li>
+        <li>Visit <a href="https://myaccount.google.com/apppasswords" target="_blank" class="link">myaccount.google.com/apppasswords</a></li>
+        <li>Generate a new App Password (select "Mail" / "Other")</li>
+        <li>Paste the 16-char code (spaces are fine, we'll strip them)</li>
+    </ol>
+</div>
+{% endblock %}

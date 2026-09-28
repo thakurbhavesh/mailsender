@@ -1,0 +1,49 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}+ Enroll Leads in "{{ seq.name }}"{% endblock %}
+{% block subheading %}Select leads to start receiving the drip campaign{% endblock %}
+{% block content %}
+
+<a href="{% url 'sequence_edit' seq.id %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">← Back to Sequence</a>
+
+<form method="get" style="display:flex;gap:10px;margin:14px 0;align-items:end;">
+    <div style="flex:1;max-width:420px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;color:var(--text-muted);">Search leads</label>
+        <input type="text" name="q" value="{{ q }}" placeholder="Name, email, category, address..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+    </div>
+    <button type="submit" class="btn">Search</button>
+</form>
+
+<form method="post" action="{% url 'sequence_enroll' seq.id %}">
+    {% csrf_token %}
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+        <div style="padding:14px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">{{ leads|length }} eligible lead{{ leads|length|pluralize }} (with email, not yet enrolled)</h3>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;">
+                <input type="checkbox" onclick="document.querySelectorAll('input[name=place_ids]').forEach(c => c.checked = this.checked)"> Select All
+            </label>
+        </div>
+        <table style="margin:0;">
+            <thead><tr><th style="width:50px;"></th><th>Lead</th><th>Email</th><th>Category</th><th>Score</th></tr></thead>
+            <tbody>
+                {% for p in leads %}
+                <tr>
+                    <td><input type="checkbox" name="place_ids" value="{{ p.id }}"></td>
+                    <td><strong>{{ p.name|truncatechars:36 }}</strong></td>
+                    <td style="font-size:13px;">{{ p.email }}</td>
+                    <td><span class="src-badge">{{ p.category|default:'—'|truncatechars:25 }}</span></td>
+                    <td><strong style="color:#6366f1;">{{ p.lead_score }}</strong></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="empty">No eligible leads. {% if q %}Try a different search.{% endif %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if leads %}
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+        <button type="submit" style="padding:11px 22px;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">✅ Enroll Selected</button>
+    </div>
+    {% endif %}
+</form>
+
+{% endblock %}

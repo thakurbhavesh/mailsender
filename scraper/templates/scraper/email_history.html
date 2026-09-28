@@ -1,0 +1,54 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📜 Email History{% endblock %}
+{% block subheading %}All sent emails and delivery status{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Sent Emails <span class="h2-count">{{ page.paginator.count }} total</span></h2>
+        <form method="get" style="display:flex;gap:6px;">
+            <input type="text" name="q" value="{{ q }}" placeholder="🔍 Search email or subject...">
+            <select name="status">
+                <option value="">All</option>
+                <option value="sent" {% if status == 'sent' %}selected{% endif %}>Sent</option>
+                <option value="failed" {% if status == 'failed' %}selected{% endif %}>Failed</option>
+                <option value="queued" {% if status == 'queued' %}selected{% endif %}>Queued</option>
+            </select>
+            <button class="btn btn-primary btn-sm">Filter</button>
+            <a href="{% url 'email_history' %}" class="btn btn-secondary btn-sm">Reset</a>
+        </form>
+    </div>
+    {% if page.object_list %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th>To</th><th>Subject</th><th>Template</th><th>From</th><th>Status</th><th>When</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for log in page.object_list %}
+            <tr>
+                <td><strong>{{ log.to_email }}</strong>{% if log.to_name %}<div style="font-size:12px;color:var(--text-muted);">{{ log.to_name }}</div>{% endif %}</td>
+                <td>{{ log.subject|truncatechars:50 }}</td>
+                <td style="font-size:13px;">{{ log.template.name|default:'—' }}</td>
+                <td style="font-size:12px;color:var(--text-muted);">{{ log.account.email|default:'—' }}</td>
+                <td>
+                    {% if log.status == 'sent' %}<span class="badge badge-completed">✓ Sent</span>
+                    {% elif log.status == 'failed' %}<span class="badge badge-failed" title="{{ log.error_message }}">✗ Failed</span>
+                    {% else %}<span class="badge badge-pending">⏳ Queued</span>{% endif %}
+                </td>
+                <td style="font-size:12px;">{{ log.created_at|date:'M d, H:i' }}</td>
+                <td><a href="{% url 'email_log_detail' log.id %}" class="btn btn-secondary btn-sm">View</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&{{ request.GET.urlencode }}">←</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}&{{ request.GET.urlencode }}">→</a>{% endif %}
+    </div>
+    {% else %}
+        <div class="empty"><div class="empty-icon">📭</div>No emails sent yet.</div>
+    {% endif %}
+</div>
+{% endblock %}

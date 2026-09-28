@@ -1,0 +1,122 @@
+{% extends 'scraper/base.html' %}
+{% load extras %}
+{% block heading %}📊 {{ report.name }}{% endblock %}
+{% block subheading %}{{ report.get_entity_display }} · {{ result.start|date:'d M' }} → {{ result.end|date:'d M Y' }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+    <a href="{% url 'reports_list' %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">← Back to Reports</a>
+    <div style="display:flex;gap:8px;">
+        <a href="{% url 'report_export_csv' report.id %}" style="padding:8px 16px;border-radius:8px;background:var(--card);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;font-size:13px;">📥 Export CSV</a>
+        {% if report.owner == request.user %}
+        <a href="{% url 'report_edit' report.id %}" style="padding:8px 16px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:600;text-decoration:none;font-size:13px;">✏️ Edit</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick date override -->
+<form method="get" style="display:flex;gap:10px;align-items:end;margin-bottom:18px;padding:14px;background:var(--card);border-radius:10px;border:1px solid var(--border);flex-wrap:wrap;">
+    <div style="flex:0 0 200px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Override Period</label>
+        <select name="preset" onchange="this.form.submit()" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);font-family:inherit;">
+            <option value="">— Use saved —</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="last7">Last 7 Days</option>
+            <option value="last30">Last 30 Days</option>
+            <option value="month">This Month</option>
+        </select>
+    </div>
+</form>
+
+{% if not result.rows %}
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:60px;text-align:center;">
+    <div style="font-size:64px;margin-bottom:14px;">📭</div>
+    <h2>No Data</h2>
+    <p style="color:var(--text-muted);">No records found for this configuration & date range.</p>
+</div>
+{% else %}
+
+<!-- Chart -->
+{% if chart_type != 'table' %}
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;margin-bottom:18px;">
+    <canvas id="reportChart" style="max-height:380px;"></canvas>
+</div>
+{% endif %}
+
+<!-- Totals -->
+{% if result.totals %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-bottom:18px;">
+    {% for key, val in result.totals.items %}
+    <div style="background:var(--card);padding:18px;border-radius:14px;border:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;">{{ key|cut:'m_'|title }}</div>
+        <div style="font-size:28px;font-weight:800;margin-top:6px;color:#6366f1;">{{ val }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Table -->
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:14px 22px;border-bottom:1px solid var(--border);">
+        <h3 style="margin:0;">📋 Data ({{ result.rows|length }} rows)</h3>
+    </div>
+    <div style="overflow-x:auto;">
+    <table style="margin:0;">
+        <thead>
+            <tr>
+                {% for dim in config.dimensions %}<th>{{ dim }}</th>{% endfor %}
+                {% for mk in result.metric_keys %}<th>{{ mk|cut:'m_'|title }}</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in result.rows %}
+            <tr>
+                {% for dim in config.dimensions %}<td>{{ row.dims|dictget:dim|default:'—' }}</td>{% endfor %}
+                {% for mk in result.metric_keys %}<td><strong>{{ row.metrics|dictget:mk }}</strong></td>{% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% if chart_type != 'table' %}
+{{ result.labels|json_script:"chart-labels" }}
+<script id="chart-data" type="application/json">[
+{% with key=result.metric_keys.0 %}
+{% for r in result.rows %}{% if forloop.counter <= 25 %}{{ r.metrics|dictget:key|default:0 }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}
+{% endwith %}
+]</script>
+<script>
+const palette = ['#6366f1','#ec4899','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6','#84cc16','#f97316','#0ea5e9'];
+const chartType = '{{ chart_type }}';
+const labels = JSON.parse(document.getElementById('chart-labels').textContent);
+const dataValues = JSON.parse(document.getElementById('chart-data').textContent);
+const isPie = chartType === 'pie';
+new Chart(document.getElementById('reportChart').getContext('2d'), {
+    type: chartType,
+    data: {
+        labels: labels,
+        datasets: [{
+            label: '{{ result.metric_keys.0|cut:"m_"|title }}',
+            data: dataValues,
+            backgroundColor: isPie ? palette : palette[0],
+            borderColor: palette[0],
+            borderWidth: 2,
+            tension: 0.3,
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: isPie } },
+        scales: isPie ? {} : { y: { beginAtZero: true } }
+    }
+});
+</script>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}

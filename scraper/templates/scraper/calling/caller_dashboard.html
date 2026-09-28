@@ -1,0 +1,358 @@
+{% extends 'scraper/calling/caller_base.html' %}
+{% block title %}My Leads — Calling{% endblock %}
+{% block page_title %}👋 Welcome, {{ request.user.first_name|default:request.user.username }}{% endblock %}
+{% block page_subtitle %}{% if open_break %}🔸 On break ({{ open_break.get_reason_display }}) since {{ open_break.start|date:"h:i A" }}{% elif attendance %}🟢 On duty since {{ attendance.check_in|date:"h:i A" }} · Worked {{ attendance.hours_worked_display }}{% else %}Welcome back{% endif %}{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="stat-grid">
+    <div class="stat-card"><div class="stat-label">🎯 Target</div><div class="stat-value" style="color:#6366f1;">{{ quota }}</div><div class="stat-sub">Daily quota</div></div>
+    <div class="stat-card"><div class="stat-label">✅ Done Today</div><div class="stat-value" style="color:#10b981;" id="stat-done">{{ today_done }}</div><div class="stat-sub">{{ progress_pct }}% of target</div></div>
+    <div class="stat-card"><div class="stat-label">⏳ Pending</div><div class="stat-value" style="color:#f59e0b;" id="stat-pending">{{ tab_counts.pending }}</div><div class="stat-sub">To be called</div></div>
+    <div class="stat-card"><div class="stat-label">🎉 Converted</div><div class="stat-value" style="color:#16a34a;">{{ outcome_counts.converted|default:0 }}</div><div class="stat-sub">Today's wins</div></div>
+    <div class="stat-card"><div class="stat-label">⭐ Interested</div><div class="stat-value" style="color:#be185d;">{{ outcome_counts.interested|default:0 }}</div><div class="stat-sub">Hot leads</div></div>
+</div>
+
+<!-- Progress bar -->
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <h3 style="margin:0;">Daily Progress</h3>
+        <span style="font-weight:700; color:#6366f1;"><span id="progress-done">{{ today_done }}</span> / {{ quota }}</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width: {{ progress_pct }}%;"></div></div>
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:13px;">
+        <span>📞 Answered: <strong>{{ outcome_counts.answered|default:0 }}</strong></span>
+        <span>📵 No Answer: <strong>{{ outcome_counts.no_answer|default:0 }}</strong></span>
+        <span>⏰ Callback: <strong>{{ outcome_counts.callback|default:0 }}</strong></span>
+        <span>⭐ Interested: <strong>{{ outcome_counts.interested|default:0 }}</strong></span>
+        <span>✅ Converted: <strong>{{ outcome_counts.converted|default:0 }}</strong></span>
+        <span>❌ Rejected: <strong>{{ outcome_counts.rejected|default:0 }}</strong></span>
+    </div>
+</div>
+
+<!-- Callback alerts -->
+{% if upcoming_callbacks %}
+<div class="callback-banner">
+    <div style="font-size:30px;">⏰</div>
+    <div style="flex:1;">
+        <div style="font-weight:800; font-size:16px; margin-bottom:6px;">
+            {{ upcoming_callbacks.count }} Callback{{ upcoming_callbacks.count|pluralize }} Due
+        </div>
+        <div class="cb-list">
+            {% for cb in upcoming_callbacks %}
+            <a href="{% url 'caller_lead_detail' cb.place.id %}" class="cb-item" style="color:white;text-decoration:none;">
+                {{ cb.place.name|truncatechars:24 }} · {{ cb.callback_at|date:"d M, h:i A" }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Filter tabs -->
+<div class="card" style="padding:18px;">
+    <div class="tab-row">
+        <a href="?tab=pending" class="tab {% if tab == 'pending' %}active{% endif %}">⏳ Pending <span class="count">{{ tab_counts.pending }}</span></a>
+        <a href="?tab=callbacks" class="tab {% if tab == 'callbacks' %}active{% endif %}">⏰ Callbacks <span class="count">{{ tab_counts.callbacks }}</span></a>
+        <a href="?tab=interested" class="tab {% if tab == 'interested' %}active{% endif %}">⭐ Interested <span class="count">{{ tab_counts.interested }}</span></a>
+        <a href="?tab=done" class="tab {% if tab == 'done' %}active{% endif %}">✅ Done <span class="count">{{ tab_counts.done }}</span></a>
+        <a href="?tab=all" class="tab {% if tab == 'all' %}active{% endif %}">📋 All <span class="count">{{ tab_counts.all }}</span></a>
+    </div>
+
+    <form method="get" class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search by name, phone, address, category..." autocomplete="off">
+    </form>
+
+    <!-- Lead cards -->
+    {% if leads_qs %}
+    <div id="leads-list">
+        {% for a in leads_qs %}
+        {% include 'scraper/calling/_lead_card.html' with a=a %}
+        {% endfor %}
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="pagination" style="margin-top:18px;">
+        {% if page_obj.has_previous %}<a href="?tab={{ tab }}&q={{ q }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
+        <span class="current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?tab={{ tab }}&q={{ q }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="padding:60px 20px; text-align:center; color:#64748b;">
+        <div style="font-size:64px; margin-bottom:14px;">
+            {% if tab == 'done' %}🏆{% elif tab == 'callbacks' %}📅{% elif tab == 'interested' %}⭐{% else %}🎉{% endif %}
+        </div>
+        <h3 style="margin:0 0 8px;">
+            {% if q %}No leads match "{{ q }}".
+            {% elif tab == 'done' %}No completed leads yet.
+            {% elif tab == 'callbacks' %}No callbacks scheduled.
+            {% elif tab == 'interested' %}No interested leads yet.
+            {% elif tab == 'pending' %}All caught up!
+            {% else %}No leads in this view.{% endif %}
+        </h3>
+        <p>{% if tab == 'pending' %}New batch will be assigned automatically.{% else %}Switch to another tab to see more.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Callback datetime mini-modal -->
+<div id="cbModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:200; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:white; border-radius:14px; padding:24px; width:100%; max-width:380px;">
+        <h3 style="margin:0 0 14px;">⏰ Schedule Callback</h3>
+        <div class="form-group">
+            <label>When should you call back?</label>
+            <input type="datetime-local" id="cbDateTime">
+        </div>
+        <div class="form-group">
+            <label>Quick Note (optional)</label>
+            <textarea id="cbNote" rows="2" placeholder="What did they say?"></textarea>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" class="btn btn-secondary" onclick="closeCbModal()">Cancel</button>
+            <button type="button" class="btn btn-success" onclick="submitCallback()">Schedule</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function setNoteStatus(card, state, text) {
+    const s = card.querySelector('.note-status');
+    if (!s) return;
+    s.classList.remove('saving','saved','error');
+    s.classList.add(state);
+    s.querySelector('.txt').textContent = text;
+}
+
+// Debounced auto-save for notes
+const noteTimers = {};
+function onNoteInput(textarea) {
+    const card = textarea.closest('.lead-card');
+    const aid = card.dataset.aid;
+    setNoteStatus(card, 'saving', 'Saving...');
+    clearTimeout(noteTimers[aid]);
+    noteTimers[aid] = setTimeout(() => saveNote(aid, textarea.value, card), 800);
+}
+
+function saveNote(aid, note, card) {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('note', note);
+    fetch(`/calling/lead/${aid}/save-note/`, { method:'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) setNoteStatus(card, 'saved', d.saved ? 'Saved ' + new Date().toLocaleTimeString() : 'Empty note');
+            else setNoteStatus(card, 'error', 'Save failed');
+        })
+        .catch(() => setNoteStatus(card, 'error', 'Network error'));
+}
+
+// Quick outcome buttons
+function logOutcome(aid, outcome, card, extraData) {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('outcome', outcome);
+    const noteEl = card.querySelector('textarea[name=quick-note]');
+    if (noteEl) fd.append('note', noteEl.value);
+    if (extraData) {
+        for (const k in extraData) fd.append(k, extraData[k]);
+    }
+    return fetch(`/calling/lead/${aid}/quick-outcome/`, { method:'POST', body: fd })
+        .then(r => r.json());
+}
+
+document.addEventListener('click', function(e){
+    const btn = e.target.closest('.out-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const card = btn.closest('.lead-card');
+    const aid = card.dataset.aid;
+    const outcome = btn.dataset.outcome;
+
+    if (outcome === 'callback') {
+        openCbModal(aid);
+        return;
+    }
+
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    logOutcome(aid, outcome, card).then(d => {
+        if (d.ok) {
+            // Update stats
+            if (d.today_done != null) {
+                document.getElementById('stat-done').textContent = d.today_done;
+                document.getElementById('progress-done').textContent = d.today_done;
+                const quota = {{ quota }};
+                const pct = Math.min(100, Math.round((d.today_done / quota) * 100));
+                document.getElementById('progress-fill').style.width = pct + '%';
+            }
+            if (d.pending_count != null) {
+                document.getElementById('stat-pending').textContent = d.pending_count;
+            }
+            // Fade card out
+            card.style.transition = 'opacity .4s, transform .4s';
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                card.remove();
+                const list = document.getElementById('leads-list');
+                if (list && list.children.length === 0) location.reload();
+            }, 400);
+        } else {
+            alert('Error: ' + (d.error || 'Failed to save'));
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    });
+});
+
+// Callback modal
+let cbAid = null;
+function openCbModal(aid) {
+    cbAid = aid;
+    // Default to 1 hour from now
+    const d = new Date(Date.now() + 60*60*1000);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    document.getElementById('cbDateTime').value = d.toISOString().slice(0,16);
+    document.getElementById('cbNote').value = '';
+    document.getElementById('cbModal').style.display = 'flex';
+}
+function closeCbModal() {
+    document.getElementById('cbModal').style.display = 'none';
+}
+function submitCallback() {
+    if (!cbAid) return;
+    const dt = document.getElementById('cbDateTime').value;
+    const note = document.getElementById('cbNote').value;
+    if (!dt) { alert('Please pick a date & time'); return; }
+    const card = document.querySelector(`.lead-card[data-aid="${cbAid}"]`);
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fd.append('outcome', 'callback');
+    fd.append('callback_at', dt);
+    fd.append('note', note);
+    fetch(`/calling/lead/${cbAid}/quick-outcome/`, { method:'POST', body: fd })
+        .then(r => r.json()).then(d => {
+            if (d.ok) { closeCbModal(); location.reload(); }
+            else alert('Error: ' + (d.error || 'Failed'));
+        });
+}
+
+// Live search (debounced)
+const searchEl = document.querySelector('.search-bar input[name=q]');
+if (searchEl) {
+    let t = null;
+    searchEl.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(() => searchEl.form.submit(), 500);
+    });
+}
+
+// ==================== VOICE NOTES (Web Speech API) ====================
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let activeRecognition = null;
+let activeMicBtn = null;
+let activeTextarea = null;
+let baseText = '';
+
+function toggleMic(btn) {
+    if (!SpeechRecognition) {
+        alert('Voice input not supported in this browser. Use Chrome/Edge on desktop or Android.');
+        return;
+    }
+    // If currently recording on this button, stop
+    if (activeMicBtn === btn && activeRecognition) {
+        activeRecognition.stop();
+        return;
+    }
+    // Stop any other active recognition
+    if (activeRecognition) {
+        activeRecognition.stop();
+    }
+    const textarea = btn.closest('.note-area').querySelector('textarea');
+    if (!textarea) return;
+
+    const recog = new SpeechRecognition();
+    recog.lang = 'en-IN';  // English (India) — auto-detects Hindi mixed
+    recog.continuous = true;
+    recog.interimResults = true;
+
+    baseText = textarea.value.trim();
+    if (baseText) baseText += ' ';
+
+    btn.style.background = '#fee2e2';
+    btn.style.color = '#991b1b';
+    btn.innerHTML = '⏹️';
+    btn.title = 'Stop recording';
+    btn.classList.add('recording');
+    activeMicBtn = btn;
+    activeRecognition = recog;
+    activeTextarea = textarea;
+
+    // Status indicator
+    const status = btn.closest('.note-area').querySelector('.note-status .txt');
+    if (status) status.textContent = '🔴 Listening... speak in English/Hindi';
+
+    recog.onresult = (event) => {
+        let interim = '', final = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const t = event.results[i][0].transcript;
+            if (event.results[i].isFinal) final += t + ' ';
+            else interim += t;
+        }
+        // Combine base + new
+        const combined = (baseText + final + interim).trim();
+        textarea.value = combined;
+        if (final) {
+            baseText += final;
+            // Trigger auto-save
+            textarea.dispatchEvent(new Event('input'));
+        }
+    };
+
+    recog.onerror = (e) => {
+        if (status) status.textContent = '⚠️ Voice error: ' + e.error;
+        resetMicBtn(btn);
+    };
+
+    recog.onend = () => {
+        if (activeTextarea) {
+            // Trigger one final save
+            activeTextarea.dispatchEvent(new Event('input'));
+        }
+        resetMicBtn(btn);
+    };
+
+    try {
+        recog.start();
+    } catch (e) {
+        if (status) status.textContent = 'Error starting voice: ' + e.message;
+        resetMicBtn(btn);
+    }
+}
+
+function resetMicBtn(btn) {
+    btn.style.background = '#eef2ff';
+    btn.style.color = '';
+    btn.innerHTML = '🎤';
+    btn.title = 'Voice dictation';
+    btn.classList.remove('recording');
+    if (activeMicBtn === btn) {
+        activeMicBtn = null;
+        activeRecognition = null;
+        activeTextarea = null;
+    }
+}
+</script>
+
+<style>
+.mic-btn.recording { animation: micPulse 1s infinite; }
+@keyframes micPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); box-shadow:0 0 0 6px rgba(239,68,68,0.2); } }
+</style>
+{% endblock %}

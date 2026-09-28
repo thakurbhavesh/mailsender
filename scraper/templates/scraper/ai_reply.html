@@ -1,0 +1,104 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}💬 AI Reply Assistant{% endblock %}
+{% block subheading %}Paste a prospect's reply, get a smart response{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="card">
+        <h2>📥 Their Reply</h2>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Lead (optional)</label>
+            <select id="placeSel">
+                <option value="">— Generic —</option>
+                {% for p in recent_places %}<option value="{{ p.id }}">{{ p.name|truncatechars:40 }}</option>{% endfor %}
+            </select>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Their email</label>
+            <textarea id="incoming" rows="8" placeholder="Paste the email reply you received..."></textarea>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">My intent</label>
+            <select id="intentSel">
+                <option>warm response leading to a call</option>
+                <option>politely decline</option>
+                <option>provide more details, push for demo</option>
+                <option>thank them and request meeting time</option>
+                <option>address their concerns and reassure</option>
+            </select>
+        </div>
+        <button id="genBtn" class="btn btn-primary" style="width:100%;font-size:15px;padding:13px;">✨ Draft Reply</button>
+        <div id="errBox" style="margin-top:12px;display:none;padding:10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:13px;"></div>
+    </div>
+
+    <div class="card">
+        <h2>📝 Suggested Reply</h2>
+        <div id="loader" style="display:none;text-align:center;padding:40px;">
+            <div class="spinner" style="width:32px;height:32px;border:4px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px;"></div>
+            <div style="color:var(--text-muted);">Gemini is drafting...</div>
+        </div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+        <div id="output" style="display:none;">
+            <textarea id="outTxt" rows="14" style="font-family:Arial;"></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+                <button id="copyBtn" class="btn btn-secondary">📋 Copy</button>
+                <button id="regenBtn" class="btn btn-primary">🔄 Regenerate</button>
+            </div>
+        </div>
+        <div id="placeholder" style="text-align:center;padding:40px;color:var(--text-muted);">
+            <div style="font-size:48px;opacity:.4;">💬</div>
+            <p>Paste their reply on the left to get suggestions.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function getCSRFToken() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+}
+
+async function generate() {
+    const incoming = document.getElementById('incoming').value.trim();
+    if (!incoming) { document.getElementById('errBox').textContent = 'Paste their reply first.'; document.getElementById('errBox').style.display = 'block'; return; }
+    document.getElementById('errBox').style.display = 'none';
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('output').style.display = 'none';
+    document.getElementById('loader').style.display = 'block';
+
+    const fd = new FormData();
+    fd.append('place_id', document.getElementById('placeSel').value);
+    fd.append('incoming', incoming);
+    fd.append('intent', document.getElementById('intentSel').value);
+
+    try {
+        const r = await fetch("{% url 'ai_generate_reply' %}", {
+            method: 'POST', body: fd, headers: {'X-CSRFToken': getCSRFToken()}
+        });
+        const d = await r.json();
+        document.getElementById('loader').style.display = 'none';
+        if (!d.ok) {
+            document.getElementById('errBox').textContent = '❌ ' + d.error;
+            document.getElementById('errBox').style.display = 'block';
+            document.getElementById('placeholder').style.display = 'block';
+            return;
+        }
+        document.getElementById('outTxt').value = d.output;
+        document.getElementById('output').style.display = 'block';
+    } catch (e) {
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('errBox').textContent = '❌ ' + e.message;
+        document.getElementById('errBox').style.display = 'block';
+    }
+}
+
+document.getElementById('genBtn').addEventListener('click', generate);
+document.getElementById('regenBtn').addEventListener('click', generate);
+document.getElementById('copyBtn').addEventListener('click', () => {
+    document.getElementById('outTxt').select();
+    document.execCommand('copy');
+    document.getElementById('copyBtn').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('copyBtn').textContent = '📋 Copy', 2000);
+});
+</script>
+<form style="display:none;">{% csrf_token %}</form>
+{% endblock %}

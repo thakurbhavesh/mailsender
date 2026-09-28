@@ -1,0 +1,48 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}Scrape Jobs{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>All Jobs ({{ page.paginator.count }})</h2>
+    {% if page.object_list %}
+    <table>
+        <thead>
+            <tr><th>#</th><th>Search Term</th><th>Source</th><th>Status</th><th>Results</th><th>Started</th><th>Finished</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        {% for j in page.object_list %}
+            <tr>
+                <td>#{{ j.id }}</td>
+                <td><strong>{{ j.search_term }}</strong></td>
+                <td><span class="badge badge-pending">{{ j.get_source_display }}</span></td>
+                <td><span class="badge badge-{{ j.status }}">{{ j.get_status_display }}</span>
+                    {% if j.error_message %}<div style="color:#ef4444;font-size:12px;margin-top:4px;">{{ j.error_message|truncatechars:80 }}</div>{% endif %}
+                </td>
+                <td>{{ j.places_count }}</td>
+                <td>{{ j.started_at|date:'M d, H:i' }}</td>
+                <td>{{ j.finished_at|date:'M d, H:i'|default:'—' }}</td>
+                <td style="white-space:nowrap;">
+                    <a href="{% url 'job_detail' j.id %}" class="btn btn-secondary" style="padding:6px 10px;font-size:12px;">View</a>
+                    <form method="post" action="{% url 'enrich_job' j.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary" style="padding:6px 10px;font-size:12px;">Enrich</button>
+                    </form>
+                    <a href="{% url 'export_config' %}?job={{ j.id }}" class="btn btn-success" style="padding:6px 10px;font-size:12px;">Export</a>
+                    <form method="post" action="{% url 'delete_job' j.id %}" style="display:inline;" onsubmit="return confirm('Delete job #{{ j.id }}?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger" style="padding:6px 10px;font-size:12px;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Prev</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next →</a>{% endif %}
+    </div>
+    {% else %}
+        <div class="empty">No jobs yet. Go to <a class="link" href="{% url 'dashboard' %}">Dashboard</a> to start one.</div>
+    {% endif %}
+</div>
+{% endblock %}

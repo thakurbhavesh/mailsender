@@ -1,0 +1,27 @@
+# Production-only deps (in addition to whatever requirements.txt has)
+# Install on VPS:  pip install -r requirements-prod.txt
+
+Django>=5.1,<6.0
+
+# WSGI server
+gunicorn>=21.2
+
+# Postgres driver
+psycopg2-binary>=2.9
+
+# Static file serving without Nginx config
+whitenoise[brotli]>=6.6
+
+# Error tracking (recommended)
+sentry-sdk>=1.40
+
+# For .env file loading (optional)
+python-dotenv>=1.0
+
+# All your existing deps
+openpyxl>=3.1
+selenium>=4.20
+requests>=2.31
+
+# For AI features
+google-generativeai>=0.5

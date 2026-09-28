@@ -1,0 +1,107 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}{% if member %}✏️ Edit Member{% else %}+ Add New Member{% endif %}{% endblock %}
+{% block subheading %}{% if member %}Update caller details{% else %}Create a new calling team member{% endif %}{% endblock %}
+{% block content %}
+
+<a href="{% url 'members_list' %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">← Back to Members</a>
+
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:28px;margin-top:14px;max-width:720px;">
+<form method="post">
+    {% csrf_token %}
+
+    {% if not member %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Username *</label>
+            <input type="text" name="username" required style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Password *</label>
+            <input type="text" name="password" required style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+    </div>
+    <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Full Name</label>
+        <input type="text" name="full_name" placeholder="e.g. Rajesh Kumar" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+    </div>
+    {% else %}
+    <div style="background:var(--card-hover);padding:14px;border-radius:10px;margin-bottom:18px;border:1px solid var(--border);">
+        <div style="font-size:12px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Username</div>
+        <div style="font-size:18px;font-weight:700;margin-top:2px;">@{{ member.user.username }}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">First Name</label>
+            <input type="text" name="first_name" value="{{ member.user.first_name }}" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Last Name</label>
+            <input type="text" name="last_name" value="{{ member.user.last_name }}" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+    </div>
+    <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">New Password <span style="font-weight:400;color:var(--text-muted);">(leave blank to keep current)</span></label>
+        <input type="text" name="password" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+    </div>
+    {% endif %}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Email</label>
+            <input type="email" name="email" value="{{ member.user.email|default:'' }}" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Phone</label>
+            <input type="text" name="phone" value="{{ member.phone|default:'' }}" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Role *</label>
+            <select name="role" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                <option value="caller" {% if member and member.role == 'caller' %}selected{% endif %}>📞 Caller</option>
+                <option value="manager" {% if member and member.role == 'manager' %}selected{% endif %}>👔 Manager</option>
+                <option value="admin" {% if member and member.role == 'admin' %}selected{% endif %}>👑 Admin</option>
+            </select>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Daily Quota (target only)</label>
+            <input type="number" name="daily_quota" value="{{ member.daily_quota|default:100 }}" min="1" max="500" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+    </div>
+
+    <div style="margin-bottom:14px;padding:14px 18px;background:#fef3c7;border:1.5px solid #fde68a;border-radius:10px;">
+        <label style="display:flex;align-items:center;gap:10px;font-weight:700;cursor:pointer;font-size:14px;color:#92400e;">
+            <input type="checkbox" name="auto_assign_enabled" {% if member.auto_assign_enabled %}checked{% endif %} style="width:18px;height:18px;cursor:pointer;">
+            ⚙️ Auto-Assign Leads Daily
+        </label>
+        <p style="margin:6px 0 0 28px;font-size:12px;color:#92400e;line-height:1.5;">
+            <strong>ON:</strong> System auto-assigns up to daily quota when caller's pending = 0.<br>
+            <strong>OFF (recommended):</strong> Only admin manually assigns leads via "Assign Leads" page.
+        </p>
+    </div>
+
+    {% if member %}
+    <div style="margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;">
+            <input type="checkbox" name="is_active" {% if member.is_active %}checked{% endif %}>
+            Active (uncheck to disable login & assignments)
+        </label>
+    </div>
+    <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Notes</label>
+        <textarea name="notes" rows="3" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);">{{ member.notes }}</textarea>
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;border-top:1px solid var(--border);padding-top:18px;">
+        <a href="{% url 'members_list' %}" style="padding:10px 18px;border-radius:8px;background:var(--card);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;font-size:14px;">Cancel</a>
+        <button type="submit" style="padding:10px 22px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 6px 14px rgba(99,102,241,0.3);">
+            {% if member %}💾 Save Changes{% else %}+ Create Member{% endif %}
+        </button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

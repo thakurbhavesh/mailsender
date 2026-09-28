@@ -1,0 +1,140 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🚀 Compose & Send{% endblock %}
+{% block subheading %}Send personalized bulk emails to selected leads{% endblock %}
+{% block content %}
+
+{% if not default_account %}
+<div class="card" style="background:#fef2f2;border-color:#fca5a5;margin-bottom:18px;">
+    <h2 style="color:#991b1b;">⚠️ No Email Account Configured</h2>
+    <p style="color:#991b1b;font-size:14px;">Set up Gmail SMTP first.</p>
+    <a href="{% url 'email_account_new' %}" class="btn btn-primary" style="margin-top:10px;">+ Add Gmail Account</a>
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'email_send_bulk' %}" id="sendForm">
+    {% csrf_token %}
+    <div class="row">
+        <div class="card">
+            <div class="card-header"><h2>1️⃣ Pick Recipients <span class="h2-count">{{ all_count }} match filter</span></h2></div>
+            <form method="get" class="filter-bar" style="margin-bottom:12px;">
+                <input type="text" name="q" value="{{ q }}" placeholder="🔍 Search..." style="flex:2;min-width:180px;">
+                <select name="category" style="min-width:140px;">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}<option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+                <select name="lead_status" style="min-width:130px;">
+                    <option value="">All Statuses</option>
+                    {% for v,l in status_choices %}<option value="{{ v }}" {% if v == lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+                <input type="number" name="min_score" value="{{ min_score }}" placeholder="Min Score" style="width:100px;">
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                <a href="{% url 'compose_bulk' %}" class="btn btn-secondary btn-sm">Reset</a>
+            </form>
+
+            {% if page.object_list %}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <label class="checkbox"><input type="checkbox" id="selectAll"> <strong>Select all on this page</strong></label>
+                <span style="font-size:13px;color:var(--text-muted);" id="selCount">0 selected</span>
+            </div>
+            <div class="table-wrap" style="max-height:480px;overflow-y:auto;">
+            <table>
+                <thead>
+                    <tr><th style="width:30px;"></th><th>Name & Email</th><th>Score</th><th>Category</th></tr>
+                </thead>
+                <tbody>
+                {% for p in page.object_list %}
+                    <tr>
+                        <td><input type="checkbox" form="sendForm" name="place_ids" value="{{ p.id }}" class="rcp"></td>
+                        <td><strong>{{ p.name }}</strong><div style="font-size:12px;color:var(--text-muted);">{{ p.email }}</div></td>
+                        <td><span class="score-pill score-{% if p.lead_score >= 70 %}hi{% elif p.lead_score >= 40 %}md{% else %}lo{% endif %}">{{ p.lead_score }}</span></td>
+                        <td style="font-size:12px;">{{ p.category|truncatechars:20 }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <div class="pagination">
+                {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&{{ request.GET.urlencode }}">←</a>{% endif %}
+                <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+                {% if page.has_next %}<a href="?page={{ page.next_page_number }}&{{ request.GET.urlencode }}">→</a>{% endif %}
+            </div>
+            {% else %}
+                <div class="empty"><div class="empty-icon">📭</div>No leads with email match.</div>
+            {% endif %}
+        </div>
+
+        <div>
+            <div class="card" style="margin-bottom:14px;">
+                <h2>2️⃣ From Account</h2>
+                <select name="account_id" form="sendForm">
+                    {% for a in accounts %}
+                        <option value="{{ a.id }}" {% if a == default_account %}selected{% endif %}>{{ a.email }} ({{ a.quota_remaining }}/{{ a.daily_limit }})</option>
+                    {% empty %}
+                        <option disabled>No accounts</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="card" style="margin-bottom:14px;">
+                <h2>3️⃣ Template</h2>
+                <select name="template_id" form="sendForm" id="tplSelect" required>
+                    <option value="">— Select template —</option>
+                    {% for t in templates %}
+                        <option value="{{ t.id }}" data-subject="{{ t.subject }}" data-body="{{ t.body_html|escape }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <a href="{% url 'email_template_new' %}" class="link" style="font-size:13px;display:inline-block;margin-top:6px;">+ Create new template</a>
+            </div>
+
+            <div class="card" style="margin-bottom:14px;">
+                <h2>4️⃣ Settings</h2>
+                <label style="font-weight:600;font-size:13px;">Throttle (sec between sends)</label>
+                <input type="number" name="throttle" form="sendForm" value="2" min="0" max="60">
+                <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">2 seconds is safe for Gmail.</p>
+            </div>
+
+            <div class="card" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;">
+                <h2 style="color:white;">5️⃣ Send</h2>
+                <p style="font-size:13px;opacity:.9;margin-bottom:12px;">Click to start sending in background.</p>
+                <button type="submit" form="sendForm" class="btn" style="background:white;color:#4f46e5;width:100%;font-size:15px;padding:12px;">
+                    🚀 Send to <span id="sendCount">0</span> Leads
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="card" style="margin-top:18px;">
+    <h2>👁️ Preview</h2>
+    <div id="previewBox" style="background:#f8fafc;padding:16px;border-radius:8px;border:1px dashed var(--border);">
+        <p style="color:var(--text-muted);">Pick a template above to preview...</p>
+    </div>
+</div>
+
+<script>
+const allCb = document.getElementById('selectAll');
+const rcps = document.querySelectorAll('.rcp');
+const counter = document.getElementById('selCount');
+const sendCount = document.getElementById('sendCount');
+function updateCount() {
+    const n = document.querySelectorAll('.rcp:checked').length;
+    counter.textContent = n + ' selected';
+    sendCount.textContent = n;
+}
+allCb && allCb.addEventListener('change', () => {
+    rcps.forEach(c => c.checked = allCb.checked);
+    updateCount();
+});
+rcps.forEach(c => c.addEventListener('change', updateCount));
+
+const tplSel = document.getElementById('tplSelect');
+const preview = document.getElementById('previewBox');
+tplSel.addEventListener('change', () => {
+    const opt = tplSel.options[tplSel.selectedIndex];
+    if (!opt.value) { preview.innerHTML = '<p style="color:#64748b;">Pick a template above to preview...</p>'; return; }
+    const subj = opt.dataset.subject;
+    const body = opt.dataset.body;
+    preview.innerHTML = '<div style="font-size:13px;color:#64748b;margin-bottom:8px;"><strong>Subject:</strong> ' + subj + '</div><hr style="margin:8px 0;"><div>' + body + '</div>';
+});
+</script>
+{% endblock %}

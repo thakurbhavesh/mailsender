@@ -1,0 +1,133 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}✍️ AI Email Writer{% endblock %}
+{% block subheading %}Generate personalized emails with Gemini{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="card">
+        <h2>📝 Configure</h2>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Lead</label>
+            <select id="placeSel">
+                <option value="">— Pick a lead —</option>
+                {% if place %}<option value="{{ place.id }}" selected>{{ place.name }} ({{ place.email }})</option>{% endif %}
+                {% for p in recent_places %}{% if p != place %}<option value="{{ p.id }}">{{ p.name }} ({{ p.email|default:'no-email' }})</option>{% endif %}{% endfor %}
+            </select>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Goal</label>
+            <select id="goalSel">
+                <option>cold outreach to schedule a call</option>
+                <option>follow-up after no reply</option>
+                <option>introduce a special offer</option>
+                <option>partnership pitch</option>
+                <option>request a quote / demo</option>
+                <option>congratulate on milestone, build relationship</option>
+            </select>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Tone</label>
+            <select id="toneSel">
+                <option>professional and warm</option>
+                <option>casual and friendly</option>
+                <option>direct and concise</option>
+                <option>enthusiastic and energetic</option>
+                <option>formal and respectful</option>
+            </select>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Extra instructions (optional)</label>
+            <textarea id="extraTxt" rows="3" placeholder="e.g. mention we serve restaurants, our pricing starts at ₹999/mo"></textarea>
+        </div>
+        <button id="genBtn" class="btn btn-primary" style="width:100%;font-size:15px;padding:13px;">✨ Generate with Gemini</button>
+        <div id="errBox" style="margin-top:12px;display:none;padding:10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:13px;"></div>
+    </div>
+
+    <div class="card">
+        <h2>👁️ Generated Output</h2>
+        <div id="loader" style="display:none;text-align:center;padding:40px;color:var(--text-muted);">
+            <div class="spinner" style="width:32px;height:32px;border:4px solid #e5e7eb;border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px;"></div>
+            <div>Gemini is writing your email...</div>
+        </div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+        <div id="output" style="display:none;">
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Subject</label>
+                <input type="text" id="outSubj">
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Body (HTML)</label>
+                <div id="outBody" style="background:#f8fafc;padding:14px;border-radius:8px;border:1px solid var(--border);max-height:400px;overflow-y:auto;font-family:Arial;"></div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px;">
+                <button id="copyBtn" class="btn btn-secondary">📋 Copy HTML</button>
+                <a id="useInComposeBtn" href="#" class="btn btn-success" style="display:none;">📧 Use in Compose</a>
+            </div>
+        </div>
+        <div id="placeholder" style="text-align:center;padding:40px;color:var(--text-muted);">
+            <div style="font-size:48px;opacity:.4;">🤖</div>
+            <p>Configure on the left, then click Generate.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const genBtn = document.getElementById('genBtn');
+const errBox = document.getElementById('errBox');
+const loader = document.getElementById('loader');
+const output = document.getElementById('output');
+const placeholder = document.getElementById('placeholder');
+const csrf = document.querySelector('[name=csrfmiddlewaretoken]') || document.querySelector('input[name=csrfmiddlewaretoken]');
+
+function getCSRFToken() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+}
+
+genBtn.addEventListener('click', async () => {
+    const placeId = document.getElementById('placeSel').value;
+    if (!placeId) { errBox.textContent = 'Pick a lead first.'; errBox.style.display = 'block'; return; }
+    errBox.style.display = 'none';
+    placeholder.style.display = 'none';
+    output.style.display = 'none';
+    loader.style.display = 'block';
+
+    const fd = new FormData();
+    fd.append('place_id', placeId);
+    fd.append('goal', document.getElementById('goalSel').value);
+    fd.append('tone', document.getElementById('toneSel').value);
+    fd.append('extra', document.getElementById('extraTxt').value);
+
+    try {
+        const r = await fetch("{% url 'ai_generate_email' %}", {
+            method: 'POST', body: fd, headers: {'X-CSRFToken': getCSRFToken()}
+        });
+        const d = await r.json();
+        loader.style.display = 'none';
+        if (!d.ok) {
+            errBox.textContent = '❌ ' + d.error;
+            errBox.style.display = 'block';
+            placeholder.style.display = 'block';
+            return;
+        }
+        document.getElementById('outSubj').value = d.subject || '';
+        document.getElementById('outBody').innerHTML = d.body || '';
+        output.style.display = 'block';
+        document.getElementById('useInComposeBtn').style.display = 'inline-flex';
+        document.getElementById('useInComposeBtn').href = "{% url 'compose' %}?place=" + placeId;
+    } catch (e) {
+        loader.style.display = 'none';
+        errBox.textContent = '❌ ' + e.message;
+        errBox.style.display = 'block';
+        placeholder.style.display = 'block';
+    }
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+    const html = document.getElementById('outBody').innerHTML;
+    navigator.clipboard.writeText(html);
+    document.getElementById('copyBtn').textContent = '✓ Copied!';
+    setTimeout(() => document.getElementById('copyBtn').textContent = '📋 Copy HTML', 2000);
+});
+</script>
+<form style="display:none;">{% csrf_token %}</form>
+{% endblock %}

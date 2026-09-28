@@ -1,0 +1,65 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📊 Custom Reports{% endblock %}
+{% block subheading %}Build any report you need — pick fields, group, chart{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:18px;">
+    <a href="{% url 'report_new' %}" style="padding:10px 18px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;text-decoration:none;font-size:14px;box-shadow:0 6px 14px rgba(99,102,241,0.3);">+ New Report</a>
+</div>
+
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);"><h3 style="margin:0;">🗂️ My Reports</h3></div>
+    {% if own_reports %}
+    <table style="margin:0;">
+        <thead><tr><th>Name</th><th>Entity</th><th>Shared?</th><th>Runs</th><th>Updated</th><th></th></tr></thead>
+        <tbody>
+            {% for r in own_reports %}
+            <tr>
+                <td><strong>{{ r.name }}</strong></td>
+                <td><span class="badge" style="background:#dbeafe;color:#1e40af;">{{ r.get_entity_display }}</span></td>
+                <td>{% if r.is_shared %}<span class="badge" style="background:#dcfce7;color:#166534;">👁 Public</span>{% else %}<span class="badge" style="background:var(--card-hover);color:var(--text-muted);">🔒 Private</span>{% endif %}</td>
+                <td>{{ r.times_run }}</td>
+                <td style="font-size:12px;color:var(--text-muted);">{{ r.updated_at|date:'d M, h:i A' }}</td>
+                <td>
+                    <div style="display:flex;gap:6px;">
+                        <a href="{% url 'report_run' r.id %}" style="padding:5px 12px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:600;text-decoration:none;font-size:12px;">▶ Run</a>
+                        <a href="{% url 'report_edit' r.id %}" style="padding:5px 12px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:600;text-decoration:none;font-size:12px;">✏️ Edit</a>
+                        <form method="post" action="{% url 'report_delete' r.id %}" style="margin:0;display:inline;" onsubmit="return confirm('Delete this report?');">
+                            {% csrf_token %}
+                            <button type="submit" style="padding:5px 12px;border-radius:6px;background:#fee2e2;color:#991b1b;font-weight:600;border:none;cursor:pointer;font-family:inherit;font-size:12px;">🗑️</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:40px 20px;">
+        <div class="empty-icon">📊</div>
+        <p>No reports yet. <a href="{% url 'report_new' %}" class="link">Create your first</a></p>
+    </div>
+    {% endif %}
+</div>
+
+{% if shared_reports %}
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);"><h3 style="margin:0;">👁 Shared by Others</h3></div>
+    <table style="margin:0;">
+        <thead><tr><th>Name</th><th>Owner</th><th>Entity</th><th>Updated</th><th></th></tr></thead>
+        <tbody>
+            {% for r in shared_reports %}
+            <tr>
+                <td><strong>{{ r.name }}</strong></td>
+                <td>@{{ r.owner.username }}</td>
+                <td>{{ r.get_entity_display }}</td>
+                <td style="font-size:12px;color:var(--text-muted);">{{ r.updated_at|date:'d M, h:i A' }}</td>
+                <td><a href="{% url 'report_run' r.id %}" style="padding:5px 12px;border-radius:6px;background:#dcfce7;color:#065f46;font-weight:600;text-decoration:none;font-size:12px;">▶ Run</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

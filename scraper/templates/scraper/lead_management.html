@@ -1,0 +1,202 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🎯 Lead Management{% endblock %}
+{% block subheading %}Har lead pe kya kaam hua — mail kab gaya, kab open hua, kaun laga hai{% endblock %}
+{% block content %}
+
+<style>
+.lm-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+.lm-kpi .k { background:var(--card,#fff); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.lm-kpi .k .lab { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); font-weight:700; }
+.lm-kpi .k .val { font-size:26px; font-weight:800; line-height:1.2; margin-top:4px; }
+.lm-kpi .k .sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.lm-kpi .k.good .val { color:#059669; }
+.lm-kpi .k.warn .val { color:#d97706; }
+.lm-kpi .k.cold .val { color:#64748b; }
+.lm-kpi .k.hot  .val { color:#dc2626; }
+
+.lm-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.lm-chips a { font-size:12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+              text-decoration:none; color:var(--text-muted); background:#fff; white-space:nowrap; }
+.lm-chips a.on { background:var(--primary,#4f46e5); color:#fff; border-color:transparent; font-weight:600; }
+
+.lm-table { width:100%; border-collapse:collapse; font-size:13px; }
+.lm-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px;
+               color:var(--text-muted); padding:10px 8px; border-bottom:2px solid var(--border); white-space:nowrap; }
+.lm-table td { padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+.lm-table tr:hover td { background:#f8fafc; }
+.lm-name { font-weight:700; color:var(--text); text-decoration:none; }
+.lm-name:hover { color:var(--primary,#4f46e5); text-decoration:underline; }
+.lm-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+.pill { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+.pill-untouched { background:#f1f5f9; color:#475569; }
+.pill-sent      { background:#dbeafe; color:#1d4ed8; }
+.pill-opened    { background:#dcfce7; color:#15803d; }
+.pill-clicked   { background:#fee2e2; color:#b91c1c; }
+.pill-called    { background:#fef3c7; color:#92400e; }
+.num { font-variant-numeric: tabular-nums; font-weight:700; }
+.num.zero { color:#cbd5e1; font-weight:500; }
+.when { font-size:11px; color:var(--text-muted); white-space:nowrap; }
+</style>
+
+<!-- ───────── KPI strip ───────── -->
+<div class="lm-kpi">
+    <div class="k"><div class="lab">Total leads</div><div class="val">{{ stats.total }}</div>
+        <div class="sub">filter ke andar</div></div>
+    <div class="k good"><div class="lab">✅ Kaam hua</div><div class="val">{{ stats.worked }}</div>
+        <div class="sub">{{ stats.coverage }}% coverage</div></div>
+    <div class="k cold"><div class="lab">🆕 Untouched</div><div class="val">{{ stats.untouched }}</div>
+        <div class="sub">koi mail/call nahi</div></div>
+    <div class="k"><div class="lab">📧 Emailed</div><div class="val">{{ stats.emailed }}</div>
+        <div class="sub">leads ko mail gaya</div></div>
+    <div class="k good"><div class="lab">👀 Opened</div><div class="val">{{ stats.opened }}</div>
+        <div class="sub">{{ stats.open_rate }}% open rate</div></div>
+    <div class="k hot"><div class="lab">🔗 Clicked</div><div class="val">{{ stats.clicked }}</div>
+        <div class="sub">{{ stats.click_rate }}% CTR</div></div>
+    <div class="k warn"><div class="lab">📞 Called</div><div class="val">{{ stats.called }}</div>
+        <div class="sub">call log hai</div></div>
+    <div class="k good"><div class="lab">🏆 Converted</div><div class="val">{{ stats.converted }}</div>
+        <div class="sub">closed deals</div></div>
+</div>
+
+<!-- ───────── Quick filter chips ───────── -->
+<div class="lm-chips">
+    <a href="?" class="{% if not work %}on{% endif %}">Sab leads</a>
+    {% for val, label in work_choices %}
+        <a href="?work={{ val }}" class="{% if work == val %}on{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+<!-- ───────── Filters ───────── -->
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header"><h2>🔎 Filters</h2></div>
+    <form method="get">
+        <input type="hidden" name="work" value="{{ work }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px;">
+            <input type="text" name="q" value="{{ q }}" placeholder="🔍 Naam, email, phone..." style="grid-column:span 2;">
+            <select name="lead_status">
+                <option value="">All statuses</option>
+                {% for v,l in status_choices %}<option value="{{ v }}" {% if v == lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+            <select name="owner">
+                <option value="">Any owner</option>
+                {% for m in members %}<option value="{{ m.id }}" {% if m.id|stringformat:'s' == owner %}selected{% endif %}>{{ m.username }}</option>{% endfor %}
+            </select>
+            <select name="category">
+                <option value="">All categories</option>
+                {% for c in categories %}<option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+            <select name="job">
+                <option value="">All jobs</option>
+                {% for j in jobs_list %}<option value="{{ j.id }}" {% if j.id|stringformat:'s' == job_id %}selected{% endif %}>#{{ j.id }} {{ j.search_term|truncatechars:22 }}</option>{% endfor %}
+            </select>
+            <select name="days">
+                <option value="">Activity: any time</option>
+                <option value="1" {% if days == '1' %}selected{% endif %}>Last 24 hours</option>
+                <option value="7" {% if days == '7' %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if days == '30' %}selected{% endif %}>Last 30 days</option>
+            </select>
+            <select name="sort">
+                {% for v,l in sort_choices %}<option value="{{ v }}" {% if sort == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+            <select name="per_page">
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25 / page</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / page</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100 / page</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'lead_management' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- ───────── Table ───────── -->
+<div class="card">
+    <div class="card-header">
+        <h2>📋 Leads <span class="h2-count">{{ stats.total }}</span></h2>
+        <span style="font-size:12px;color:var(--text-muted);">
+            {{ page.start_index }}–{{ page.end_index }} of {{ stats.total }}
+        </span>
+    </div>
+
+    <div style="overflow-x:auto;">
+    <table class="lm-table">
+        <thead>
+            <tr>
+                <th>Lead</th>
+                <th>Kaam status</th>
+                <th>Owner</th>
+                <th>📧 Mails</th>
+                <th>Last mail kab</th>
+                <th>👀 Opens</th>
+                <th>Open kab hua</th>
+                <th>🔗 Clicks</th>
+                <th>📞 Calls</th>
+                <th>Stage</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in page %}
+            <tr>
+                <td>
+                    <a href="{% url 'lead_activity' p.id %}" class="lm-name">{{ p.name|truncatechars:38 }}</a>
+                    <div class="lm-sub">
+                        {% if p.email %}✉ {{ p.email|truncatechars:28 }}{% else %}<span style="color:#cbd5e1;">no email</span>{% endif %}
+                        {% if p.phone %} · ☎ {{ p.phone }}{% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if p.email_count == 0 and p.call_count == 0 %}
+                        <span class="pill pill-untouched">🆕 Untouched</span>
+                    {% else %}
+                        {% if p.total_clicks %}<span class="pill pill-clicked">🔗 Clicked</span>
+                        {% elif p.opened_mails %}<span class="pill pill-opened">👀 Opened</span>
+                        {% elif p.email_count %}<span class="pill pill-sent">📤 Sent</span>{% endif %}
+                        {% if p.call_count %}<span class="pill pill-called">📞 Called</span>{% endif %}
+                    {% endif %}
+                </td>
+                <td><span style="font-size:12px;">{{ p.owner_name|default:"—" }}</span></td>
+                <td><span class="num {% if not p.email_count %}zero{% endif %}">{{ p.email_count }}</span></td>
+                <td class="when">{% if p.last_email_at %}{{ p.last_email_at|date:'d M, H:i' }}<br>
+                        <span style="color:#94a3b8;">{{ p.last_email_at|timesince }} pehle</span>
+                    {% else %}—{% endif %}</td>
+                <td><span class="num {% if not p.total_opens %}zero{% endif %}">{{ p.total_opens }}</span>
+                    {% if p.opened_mails %}<div class="lm-sub">{{ p.opened_mails }} mail</div>{% endif %}</td>
+                <td class="when">{% if p.last_open_at %}{{ p.last_open_at|date:'d M, H:i' }}<br>
+                        <span style="color:#94a3b8;">{{ p.last_open_at|timesince }} pehle</span>
+                    {% elif p.email_count %}<span style="color:#f59e0b;">abhi nahi khola</span>
+                    {% else %}—{% endif %}</td>
+                <td><span class="num {% if not p.total_clicks %}zero{% endif %}">{{ p.total_clicks }}</span></td>
+                <td><span class="num {% if not p.call_count %}zero{% endif %}">{{ p.call_count }}</span>
+                    {% if p.last_call_at %}<div class="lm-sub">{{ p.last_call_at|date:'d M' }}</div>{% endif %}</td>
+                <td><span class="badge badge-{{ p.lead_status }}">{{ p.get_lead_status_display }}</span>
+                    <div class="lm-sub">score {{ p.lead_score }}</div></td>
+                <td style="white-space:nowrap;">
+                    <a href="{% url 'lead_activity' p.id %}" class="btn btn-secondary btn-sm">Timeline</a>
+                    {% if p.email %}<a href="{% url 'compose' %}?place={{ p.id }}" class="btn btn-primary btn-sm">Mail</a>{% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted);">
+                Is filter pe koi lead nahi mili.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% if page.has_other_pages %}
+    <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap;">
+        {% if page.has_previous %}
+            <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page.previous_page_number }}">← Prev</a>
+        {% endif %}
+        <span style="font-size:13px;color:var(--text-muted);">Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+            <a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page.next_page_number }}">Next →</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

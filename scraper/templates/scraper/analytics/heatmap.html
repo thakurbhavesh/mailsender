@@ -1,0 +1,76 @@
+{% extends 'scraper/base.html' %}
+{% load extras %}
+{% block heading %}🔥 Activity Heatmap{% endblock %}
+{% block subheading %}When does your team make the most calls / get most conversions{% endblock %}
+{% block content %}
+
+{% include 'scraper/analytics/_date_filter.html' %}
+
+<!-- Metric switcher -->
+<div style="display:flex;gap:10px;margin-bottom:18px;">
+    <a href="?preset={{ preset }}{% if preset == 'custom' %}&start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}{% endif %}&metric=calls" style="padding:8px 16px;border-radius:8px;background:{% if metric == 'calls' %}#6366f1;color:white{% else %}var(--card);color:var(--text);border:1.5px solid var(--border){% endif %};font-weight:700;text-decoration:none;font-size:13px;">📞 Total Calls</a>
+    <a href="?preset={{ preset }}{% if preset == 'custom' %}&start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}{% endif %}&metric=conversion" style="padding:8px 16px;border-radius:8px;background:{% if metric == 'conversion' %}#10b981;color:white{% else %}var(--card);color:var(--text);border:1.5px solid var(--border){% endif %};font-weight:700;text-decoration:none;font-size:13px;">🎉 Conversions</a>
+</div>
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+    <!-- Heatmap grid -->
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;overflow-x:auto;">
+        <h2 style="margin:0 0 16px;">🌡️ Day × Hour Heatmap ({% if metric == 'conversion' %}Conversions{% else %}Calls{% endif %})</h2>
+
+        <div style="display:flex;gap:1px;margin-bottom:6px;">
+            <div style="width:44px;"></div>
+            {% for h in hours %}
+                <div style="flex:1;min-width:22px;text-align:center;font-size:10px;color:var(--text-muted);font-weight:600;">{{ h }}</div>
+            {% endfor %}
+        </div>
+
+        {% for row in rendered %}
+        <div style="display:flex;gap:1px;margin-bottom:1px;">
+            <div style="width:44px;font-size:11px;font-weight:700;color:var(--text-muted);text-align:right;padding-right:8px;line-height:24px;">{{ row.day }}</div>
+            {% for cell in row.cells %}
+            <div
+                title="{{ cell.dh }}: {{ cell.v }}"
+                style="flex:1;min-width:22px;height:24px;background:{% if cell.v == 0 %}#f1f5f9{% else %}rgba({% if metric == 'conversion' %}16,185,129{% else %}99,102,241{% endif %},{{ cell.pct|div:100 }}){% endif %};border-radius:3px;display:grid;place-items:center;font-size:9px;font-weight:700;color:{% if cell.pct > 50 %}white{% else %}#475569{% endif %};">
+                {% if cell.v %}{{ cell.v }}{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:12px;color:var(--text-muted);">
+            <span>Total: <strong style="color:var(--text);">{{ total_calls }} calls</strong> in this period</span>
+            <span style="display:flex;align-items:center;gap:6px;">
+                Less <div style="display:flex;gap:1px;">
+                    <div style="width:12px;height:12px;background:rgba({% if metric == 'conversion' %}16,185,129{% else %}99,102,241{% endif %},0.2);border-radius:2px;"></div>
+                    <div style="width:12px;height:12px;background:rgba({% if metric == 'conversion' %}16,185,129{% else %}99,102,241{% endif %},0.4);border-radius:2px;"></div>
+                    <div style="width:12px;height:12px;background:rgba({% if metric == 'conversion' %}16,185,129{% else %}99,102,241{% endif %},0.6);border-radius:2px;"></div>
+                    <div style="width:12px;height:12px;background:rgba({% if metric == 'conversion' %}16,185,129{% else %}99,102,241{% endif %},0.8);border-radius:2px;"></div>
+                    <div style="width:12px;height:12px;background:rgba({% if metric == 'conversion' %}16,185,129{% else %}99,102,241{% endif %},1);border-radius:2px;"></div>
+                </div> More
+            </span>
+        </div>
+    </div>
+
+    <!-- Top slots -->
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;">
+        <h2 style="margin:0 0 14px;">🏆 Top Time Slots</h2>
+        {% if top_slots %}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            {% for s in top_slots %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--card-hover);border-radius:10px;border:1px solid var(--border);">
+                <div>
+                    <div style="font-weight:700;font-size:14px;">{{ s.day }} {{ s.hour }}:00</div>
+                    <div style="font-size:12px;color:var(--text-muted);">{{ s.hour|add_int:1 }}:00 hour window</div>
+                </div>
+                <div style="font-size:22px;font-weight:800;color:#6366f1;">{{ s.v }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <p style="margin-top:14px;font-size:12px;color:var(--text-muted);">💡 <em>Schedule calling shifts during these hours for max impact.</em></p>
+        {% else %}
+        <p class="empty">No call activity yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

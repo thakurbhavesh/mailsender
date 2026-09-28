@@ -1,0 +1,77 @@
+{% extends 'scraper/base.html' %}
+{% load extras %}
+{% block heading %}🗂️ Map Columns{% endblock %}
+{% block subheading %}{{ job.original_filename }} — Tell us which column is which field{% endblock %}
+{% block content %}
+
+<a href="{% url 'import_home' %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">← Back to Imports</a>
+
+<form method="post" action="{% url 'import_map' job.id %}" style="margin-top:14px;">
+    {% csrf_token %}
+
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;margin-bottom:18px;">
+        <h3 style="margin:0 0 14px;">⚙️ Settings</h3>
+        <div style="max-width:340px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Source Label</label>
+            <input type="text" name="source_label" value="{{ job.source_label }}" style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%;font-family:inherit;background:var(--input-bg);color:var(--text);">
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Used as 'source' tag for these leads (e.g. linkedin, conference, vendor-list).</div>
+        </div>
+    </div>
+
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+        <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <h2 style="margin:0;">🗂️ Column Mapping</h2>
+            <div style="font-size:12px;color:var(--text-muted);">Auto-detected. Adjust as needed.</div>
+        </div>
+        <div style="padding:22px;">
+            <div style="background:#fffbeb;border:1px solid #fde68a;padding:12px 16px;border-radius:10px;margin-bottom:18px;font-size:13px;color:#92400e;">
+                <strong>📌 Required:</strong> At least one column must map to <strong>Name</strong>. For dedup, also map <strong>Phone</strong> or <strong>Email</strong>.
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:14px;">
+                {% for h in headers %}
+                <div style="background:var(--card-hover);padding:14px;border-radius:10px;border:1.5px solid var(--border);">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:4px;">CSV Column</div>
+                    <div style="font-weight:700;font-size:14px;margin-bottom:8px;">{{ h|truncatechars:36 }}</div>
+                    <label style="font-size:12px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:4px;">Maps To:</label>
+                    <select name="map_{{ h }}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);font-size:13px;">
+                        {% for v,l in field_choices %}
+                        <option value="{{ v }}" {% if v == job.column_mapping|dictget:h %}selected{% endif %}>{{ l }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview -->
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-top:18px;">
+        <div style="padding:16px 22px;border-bottom:1px solid var(--border);">
+            <h2 style="margin:0;">👀 Data Preview <span style="font-size:13px;color:var(--text-muted);font-weight:600;">(first 8 rows)</span></h2>
+        </div>
+        <div style="overflow-x:auto;">
+            <table style="margin:0;font-size:12px;">
+                <thead>
+                    <tr>{% for h in headers %}<th>{{ h|truncatechars:30 }}</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                    {% for row in sample %}
+                    <tr>
+                        {% for h in headers %}<td>{{ row|dictget:h|truncatechars:50 }}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+        <a href="{% url 'import_home' %}" style="padding:11px 22px;border-radius:8px;background:var(--card);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;">Cancel</a>
+        <button type="submit" formaction="{% url 'import_map' job.id %}" style="padding:11px 22px;border-radius:8px;background:var(--card-hover);color:var(--text);border:1.5px solid var(--border);font-weight:600;cursor:pointer;font-family:inherit;">💾 Save Mapping</button>
+        <button type="submit" formaction="{% url 'import_run' job.id %}" formmethod="post" style="padding:11px 26px;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;box-shadow:0 6px 14px rgba(16,185,129,0.3);">
+            ✅ Save & Import All Rows →
+        </button>
+    </div>
+</form>
+
+{% endblock %}

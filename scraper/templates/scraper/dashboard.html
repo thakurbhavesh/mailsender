@@ -1,0 +1,349 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}Welcome back, {{ user.username|capfirst }} 👋{% endblock %}
+{% block subheading %}Here's what's happening with your leads today{% endblock %}
+{% block content %}
+
+<style>
+.dash-grid { display:grid; gap:18px; margin-bottom:18px; }
+.dash-grid.cols-2 { grid-template-columns: 2fr 1fr; }
+.dash-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.dash-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1100px) { .dash-grid.cols-2, .dash-grid.cols-3, .dash-grid.cols-4 { grid-template-columns: 1fr; } }
+
+.kpi { padding:18px 20px; border-radius:14px; color:white; position:relative; overflow:hidden;
+       box-shadow:0 6px 20px rgba(0,0,0,.08); transition:transform .2s; }
+.kpi:hover { transform:translateY(-2px); }
+.kpi::before { content:''; position:absolute; top:-30px; right:-30px; width:100px; height:100px;
+                border-radius:50%; background:rgba(255,255,255,0.12); }
+.kpi .k-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; opacity:0.9; }
+.kpi .k-value { font-size:30px; font-weight:800; margin:6px 0 4px; letter-spacing:-1px; }
+.kpi .k-sub { font-size:12px; opacity:0.85; font-weight:500; }
+.kpi .k-icon { position:absolute; top:14px; right:14px; font-size:24px; opacity:0.5; }
+
+.section-title { font-size:13px; font-weight:700; text-transform:uppercase;
+                  letter-spacing:1.5px; color:var(--text-muted); margin:6px 0 12px; }
+
+.hero-action {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+    border-radius:16px; padding:24px; color:white; position:relative; overflow:hidden;
+}
+.hero-action::before { content:''; position:absolute; top:-80px; right:-80px;
+    width:300px; height:300px; border-radius:50%; background:rgba(255,255,255,0.08); }
+.hero-action::after { content:''; position:absolute; bottom:-100px; left:-100px;
+    width:280px; height:280px; border-radius:50%; background:rgba(0,0,0,0.1); }
+.hero-action > * { position:relative; z-index:1; }
+
+.pipeline-bar { display:flex; gap:6px; margin-top:8px; }
+.pipeline-step { flex:1; padding:14px 12px; border-radius:10px; background:var(--card-hover);
+                  border:1.5px solid var(--border); transition:all .15s; }
+.pipeline-step:hover { border-color:var(--primary); transform:translateY(-1px); }
+.pipeline-step .ps-label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; font-weight:700; }
+.pipeline-step .ps-count { font-size:24px; font-weight:800; margin-top:4px; }
+
+.activity-feed { max-height:340px; overflow-y:auto; }
+.activity-item { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+.activity-item:last-child { border-bottom:none; }
+.activity-icon { width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+                  font-size:16px; flex-shrink:0; background:var(--card-hover); }
+.activity-text { flex:1; font-size:13px; line-height:1.4; }
+.activity-time { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+.lead-pill { padding:10px 12px; background:var(--card-hover); border:1px solid var(--border);
+              border-radius:10px; display:flex; align-items:center; gap:10px;
+              text-decoration:none; color:inherit; transition:all .15s; }
+.lead-pill:hover { border-color:var(--primary); transform:translateX(2px); }
+.lead-pill .lp-name { font-weight:600; font-size:13px; flex:1; min-width:0;
+                       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+</style>
+
+<!-- ═══ HERO: Quick start + KPIs ═══ -->
+<div class="dash-grid cols-2">
+    <div class="hero-action">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;opacity:0.85;">Start fresh</div>
+        <h2 style="color:white;font-size:24px;margin:8px 0 6px;border:none;display:block;">🚀 Start a new scrape</h2>
+        <p style="font-size:14px;opacity:0.95;margin-bottom:18px;">Pull leads from Google Maps, JustDial, or IndiaMART — auto-enrichment runs after.</p>
+        <form method="post" action="{% url 'start_job' %}" id="scrapeForm">
+            {% csrf_token %}
+            <div style="display:grid;grid-template-columns:1fr 200px;gap:8px;margin-bottom:10px;">
+                <div style="position:relative;">
+                    <input type="text" name="search_term" id="searchInput" placeholder="e.g. Restaurants in Ayodhya, Plywood Suppliers" required style="background:rgba(255,255,255,0.95);color:#0f172a;padding-right:106px;border:none;">
+                    <button type="button" id="aiEnhanceBtn" title="AI suggest better queries" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:6px 10px;border:none;border-radius:7px;background:linear-gradient(135deg,#0f172a,#1e293b);color:white;font-size:11px;font-weight:700;cursor:pointer;">✨ AI</button>
+                </div>
+                <select name="source" id="sourceSel" style="background:rgba(255,255,255,0.95);color:#0f172a;border:none;">
+                    <option value="google_maps">🗺️ Google Maps</option>
+                </select>
+                <input type="hidden" name="city" value="Delhi">
+            </div>
+            <div id="aiSuggestions" style="display:none;background:rgba(0,0,0,0.25);border-radius:10px;padding:12px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;font-weight:700;">
+                    ✨ Suggested queries — click to use
+                    <button type="button" onclick="document.getElementById('aiSuggestions').style.display='none'" style="background:none;border:none;color:white;cursor:pointer;font-size:16px;opacity:0.7;">×</button>
+                </div>
+                <div id="aiSuggestionsList" style="display:flex;flex-direction:column;gap:5px;"></div>
+            </div>
+            <div id="aiError" style="display:none;background:rgba(239,68,68,0.4);padding:8px;border-radius:8px;font-size:12px;margin-bottom:10px;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <label class="checkbox" style="font-size:13px;color:white;">
+                    <input type="checkbox" name="headless" checked style="accent-color:white;">
+                    👻 Headless · uncheck to watch live
+                </label>
+                <button type="submit" class="btn" style="background:white;color:#4f46e5;font-weight:700;padding:10px 22px;">⚡ Start Scrape</button>
+            </div>
+        </form>
+    </div>
+
+    <div>
+        <div class="dash-grid cols-2" style="gap:12px;margin-bottom:0;">
+            <div class="kpi" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+                <span class="k-icon">👥</span>
+                <div class="k-label">Total leads</div>
+                <div class="k-value">{{ total_places }}</div>
+                <div class="k-sub">{{ total_jobs }} jobs run</div>
+            </div>
+            <div class="kpi" style="background:linear-gradient(135deg,#10b981,#14b8a6);">
+                <span class="k-icon">✉️</span>
+                <div class="k-label">With email</div>
+                <div class="k-value">{{ with_email }}</div>
+                <div class="k-sub">ready for outreach</div>
+            </div>
+            <div class="kpi" style="background:linear-gradient(135deg,#f59e0b,#f97316);">
+                <span class="k-icon">⭐</span>
+                <div class="k-label">Avg score</div>
+                <div class="k-value">{{ avg_score }}</div>
+                <div class="k-sub">/ 100 quality</div>
+            </div>
+            <div class="kpi" style="background:linear-gradient(135deg,#ec4899,#d946ef);">
+                <span class="k-icon">🎯</span>
+                <div class="k-label">Converted</div>
+                <div class="k-value">{{ converted }}</div>
+                <div class="k-sub">{{ running_jobs }} running now</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ PIPELINE ═══ -->
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header"><h2>🎯 Sales Pipeline</h2><a href="{% url 'data_view' %}" class="btn btn-secondary btn-sm">View all leads →</a></div>
+    <div class="pipeline-bar">
+        {% for key, data in pipeline.items %}
+        <a href="{% url 'data_view' %}?lead_status={{ key }}" class="pipeline-step" style="text-decoration:none;color:inherit;">
+            <div class="ps-label">{{ data.label }}</div>
+            <div class="ps-count">{{ data.count }}</div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ═══ Last searches + Platforms ═══ -->
+{% if last_searches or platforms_used %}
+<div class="dash-grid cols-2">
+    {% if last_searches %}
+    <div class="card">
+        <div class="card-header"><h2>🕐 Recent Searches <span class="h2-count">{{ last_searches|length }}</span></h2></div>
+        <div style="display:grid;gap:8px;">
+            {% for j in last_searches %}
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card-hover);">
+                <div style="font-size:20px;flex-shrink:0;">{% if j.source == 'justdial' %}📱{% elif j.source == 'indiamart' %}🏭{% else %}🗺️{% endif %}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ j.search_term }}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">{{ j.total_results }} results · {{ j.started_at|timesince }} ago</div>
+                </div>
+                <form method="post" action="{% url 're_search' j.id %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">🔁 Re-run</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header"><h2>🌐 Platforms</h2></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            {% for p in platforms_used %}
+            <div style="display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--border);border-radius:10px;{% if p.used %}background:var(--card-hover);{% endif %}{% if p.status == 'soon' %}opacity:0.7;{% endif %}">
+                <div style="width:36px;height:36px;border-radius:10px;background:var(--card-hover);display:grid;place-items:center;font-size:18px;">{{ p.icon }}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">
+                        {{ p.name }}
+                        {% if p.status == 'live' %}<span style="font-size:9px;background:#10b981;color:white;padding:1px 6px;border-radius:999px;font-weight:700;letter-spacing:0.5px;">LIVE</span>
+                        {% else %}<span style="font-size:9px;background:#94a3b8;color:white;padding:1px 6px;border-radius:999px;font-weight:700;letter-spacing:0.5px;">SOON</span>{% endif %}
+                    </div>
+                    <div style="font-size:11px;color:var(--text-muted);">{% if p.status == 'live' %}{% if p.used %}{{ p.jobs }} jobs · {{ p.leads }} leads{% else %}Not used yet{% endif %}{% else %}Anti-bot — coming back{% endif %}</div>
+                </div>
+                <div style="font-size:18px;font-weight:800;color:{{ p.color }};">{{ p.leads }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ Hot leads + Activity ═══ -->
+<div class="dash-grid cols-2">
+    <div class="card">
+        <div class="card-header">
+            <h2>🔥 Hot Leads <span class="h2-count">score ≥ 40</span></h2>
+            <a href="{% url 'data_view' %}?min_score=40" class="btn btn-secondary btn-sm">See all →</a>
+        </div>
+        {% if hot_leads %}
+            <div style="display:grid;gap:8px;">
+            {% for p in hot_leads %}
+                <a href="{% url 'lead_detail' p.id %}" class="lead-pill">
+                    <span class="score-pill score-{% if p.lead_score >= 70 %}hi{% else %}md{% endif %}">{{ p.lead_score }}</span>
+                    <div class="lp-name">{{ p.name }}<div style="font-weight:400;font-size:11px;color:var(--text-muted);margin-top:1px;">{{ p.category|truncatechars:30 }}{% if p.email %} · ✉️{% endif %}{% if p.phone %} · 📞{% endif %}</div></div>
+                    <span style="color:var(--text-muted);font-size:14px;">→</span>
+                </a>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty"><div class="empty-icon">🔥</div>No hot leads yet — start a scrape!</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h2>⚡ Recent Activity</h2></div>
+        {% if activity %}
+            <div class="activity-feed">
+            {% for a in activity %}
+                <div class="activity-item">
+                    <div class="activity-icon" style="background:rgba(99,102,241,0.1);">{{ a.icon }}</div>
+                    <div class="activity-text">{{ a.text }}<div class="activity-time">{{ a.when|timesince }} ago</div></div>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty"><div class="empty-icon">⚡</div>No activity yet</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ Insights — charts ═══ -->
+<div class="dash-grid cols-2">
+    <div class="card">
+        <div class="card-header"><h2>🏷️ Top Categories</h2></div>
+        <div style="position:relative;height:280px;width:100%;"><canvas id="categoryChart"></canvas></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h2>📊 Lead Status</h2></div>
+        <div style="position:relative;height:280px;width:100%;"><canvas id="statusChart"></canvas></div>
+    </div>
+</div>
+
+<!-- ═══ Quick action shortcuts ═══ -->
+<div class="dash-grid cols-4">
+    <a href="{% url 'data_view' %}" class="card" style="text-decoration:none;color:inherit;text-align:center;padding:24px 16px;">
+        <div style="font-size:32px;margin-bottom:8px;">🗂️</div>
+        <div style="font-weight:700;font-size:14px;">Data Explorer</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Browse · filter · bulk-act</div>
+    </a>
+    <a href="{% url 'compose_bulk' %}" class="card" style="text-decoration:none;color:inherit;text-align:center;padding:24px 16px;">
+        <div style="font-size:32px;margin-bottom:8px;">🚀</div>
+        <div style="font-weight:700;font-size:14px;">Compose & Send</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Bulk emails to leads</div>
+    </a>
+    <a href="{% url 'ai_writer' %}" class="card" style="text-decoration:none;color:inherit;text-align:center;padding:24px 16px;">
+        <div style="font-size:32px;margin-bottom:8px;">🤖</div>
+        <div style="font-weight:700;font-size:14px;">AI Writer</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Personalized emails</div>
+    </a>
+    <a href="{% url 'export_config' %}" class="card" style="text-decoration:none;color:inherit;text-align:center;padding:24px 16px;">
+        <div style="font-size:32px;margin-bottom:8px;">📥</div>
+        <div style="font-weight:700;font-size:14px;">Export Wizard</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Excel · CSV · columns</div>
+    </a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const catData = {{ top_categories_json|safe }};
+const statusData = {{ status_breakdown_json|safe }};
+const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+const gridC = isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9';
+const tickC = isDark ? '#94a3b8' : '#64748b';
+
+if (catData.length) {
+    new Chart(document.getElementById('categoryChart'), {
+        type: 'bar',
+        data: {
+            labels: catData.map(d => d.label.length > 18 ? d.label.substring(0,18)+'…' : d.label),
+            datasets: [{
+                label: 'Leads',
+                data: catData.map(d => d.value),
+                backgroundColor: ['#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'],
+                borderRadius: 8, borderSkipped: false,
+            }]
+        },
+        options: {
+            plugins:{legend:{display:false}, tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:8}},
+            scales:{
+                y:{beginAtZero:true,grid:{color:gridC},ticks:{color:tickC}},
+                x:{grid:{display:false},ticks:{color:tickC}}
+            },
+            responsive:true, maintainAspectRatio:false
+        }
+    });
+}
+
+if (statusData.length) {
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: statusData.map(d => d.label.charAt(0).toUpperCase() + d.label.slice(1)),
+            datasets: [{
+                data: statusData.map(d => d.value),
+                backgroundColor: ['#94a3b8','#6366f1','#f59e0b','#10b981','#ef4444'],
+                borderWidth: 3, borderColor: isDark ? '#131a2e' : '#ffffff', hoverOffset: 10,
+            }]
+        },
+        options: {
+            cutout: '65%',
+            plugins:{legend:{position:'bottom',labels:{padding:14,usePointStyle:true,font:{size:12,weight:'500'},color:tickC}},
+                     tooltip:{backgroundColor:'#0f172a',padding:10,cornerRadius:8}},
+            responsive:true, maintainAspectRatio:false
+        }
+    });
+}
+
+// AI Enhance Search button
+(function() {
+    const btn = document.getElementById('aiEnhanceBtn');
+    const input = document.getElementById('searchInput');
+    const sourceSel = document.getElementById('sourceSel');
+    const box = document.getElementById('aiSuggestions');
+    const list = document.getElementById('aiSuggestionsList');
+    const errBox = document.getElementById('aiError');
+    function csrf() { const m = document.cookie.match(/csrftoken=([^;]+)/); return m ? m[1] : ''; }
+    btn && btn.addEventListener('click', async () => {
+        const q = input.value.trim();
+        if (!q) { errBox.textContent='Type a search term first.'; errBox.style.display='block'; return; }
+        errBox.style.display = 'none';
+        btn.disabled = true; btn.textContent = '⏳';
+        box.style.display = 'none';
+        const fd = new FormData();
+        fd.append('query', q); fd.append('source', sourceSel.value);
+        try {
+            const r = await fetch("{% url 'ai_enhance_search' %}", {method:'POST', body:fd, headers:{'X-CSRFToken':csrf()}});
+            const d = await r.json();
+            btn.disabled = false; btn.innerHTML = '✨ AI';
+            if (!d.ok) { errBox.textContent = '❌ ' + d.error; errBox.style.display = 'block'; return; }
+            list.innerHTML = '';
+            d.suggestions.forEach(s => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.textContent = '→ ' + s;
+                item.style.cssText = 'text-align:left;padding:7px 10px;border:none;border-radius:6px;background:rgba(255,255,255,0.95);color:#0f172a;cursor:pointer;font-size:12px;font-family:inherit;font-weight:500;';
+                item.onclick = () => { input.value = s; box.style.display = 'none'; input.focus(); };
+                list.appendChild(item);
+            });
+            box.style.display = 'block';
+        } catch (e) {
+            btn.disabled = false; btn.innerHTML = '✨ AI';
+            errBox.textContent = '❌ ' + e.message; errBox.style.display = 'block';
+        }
+    });
+})();
+</script>
+{% endblock %}

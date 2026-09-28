@@ -1,0 +1,40 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}👁️ Preview: {{ tpl.name }}{% endblock %}
+{% block subheading %}Rendered with real lead data{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="card">
+        <h2>📧 As recipient sees it</h2>
+        <div style="background:#f8fafc;padding:14px;border-radius:8px;margin-bottom:14px;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Subject</div>
+            <div style="font-size:16px;font-weight:600;margin-top:4px;">{{ subject }}</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;background:white;padding:24px;max-height:500px;overflow-y:auto;">
+            {{ body|safe }}
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;">
+            <a href="{% url 'email_template_edit' tpl.id %}" class="btn btn-secondary">✏️ Edit Template</a>
+            <a href="{% url 'compose_bulk' %}?template={{ tpl.id }}" class="btn btn-primary">🚀 Use this Template</a>
+            <a href="{% url 'email_templates' %}" class="btn btn-secondary">← Back</a>
+        </div>
+    </div>
+
+    <div>
+        <div class="card" style="margin-bottom:14px;">
+            <h2>🧪 Sample Data Used</h2>
+            <table style="font-size:13px;">
+                {% for k, v in sample.items %}
+                <tr><td style="padding:5px 0;color:var(--text-muted);text-transform:capitalize;">{{ k }}:</td><td><strong>{{ v }}</strong></td></tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="card">
+            <h2>📋 Template Source</h2>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Subject template:</div>
+            <code style="background:#f8fafc;padding:8px;border-radius:6px;display:block;font-size:12px;">{{ tpl.subject }}</code>
+            <div style="font-size:12px;color:var(--text-muted);margin:10px 0 8px;">Body template:</div>
+            <pre style="background:#f8fafc;padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:300px;">{{ tpl.body_html }}</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}

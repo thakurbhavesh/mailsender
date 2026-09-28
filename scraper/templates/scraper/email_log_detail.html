@@ -1,0 +1,39 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📧 Email Detail{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="card">
+        <h2>Message</h2>
+        <div style="background:#f8fafc;padding:14px;border-radius:8px;margin-bottom:12px;">
+            <strong>Subject:</strong> {{ log.subject }}
+        </div>
+        <div style="background:white;border:1px solid var(--border);padding:18px;border-radius:8px;max-height:600px;overflow-y:auto;">
+            {{ log.body_html|safe }}
+        </div>
+    </div>
+    <div>
+        <div class="card" style="margin-bottom:14px;">
+            <h2>Details</h2>
+            <table style="font-size:13px;">
+                <tr><td style="padding:6px 0;color:var(--text-muted);">To:</td><td><strong>{{ log.to_email }}</strong></td></tr>
+                {% if log.to_name %}<tr><td style="padding:6px 0;color:var(--text-muted);">Name:</td><td>{{ log.to_name }}</td></tr>{% endif %}
+                <tr><td style="padding:6px 0;color:var(--text-muted);">From:</td><td>{{ log.account.email|default:'—' }}</td></tr>
+                <tr><td style="padding:6px 0;color:var(--text-muted);">Template:</td><td>{{ log.template.name|default:'—' }}</td></tr>
+                <tr><td style="padding:6px 0;color:var(--text-muted);">Status:</td><td>
+                    {% if log.status == 'sent' %}<span class="badge badge-completed">✓ Sent</span>
+                    {% elif log.status == 'failed' %}<span class="badge badge-failed">✗ Failed</span>
+                    {% else %}<span class="badge badge-pending">⏳ Queued</span>{% endif %}
+                </td></tr>
+                <tr><td style="padding:6px 0;color:var(--text-muted);">Created:</td><td>{{ log.created_at|date:'M d Y, H:i' }}</td></tr>
+                {% if log.sent_at %}<tr><td style="padding:6px 0;color:var(--text-muted);">Sent:</td><td>{{ log.sent_at|date:'M d Y, H:i' }}</td></tr>{% endif %}
+            </table>
+            {% if log.error_message %}
+            <div style="background:#fee2e2;color:#991b1b;padding:10px;border-radius:8px;margin-top:12px;font-size:13px;">
+                <strong>Error:</strong> {{ log.error_message }}
+            </div>
+            {% endif %}
+        </div>
+        <a href="{% url 'email_history' %}" class="btn btn-secondary">← Back to History</a>
+    </div>
+</div>
+{% endblock %}

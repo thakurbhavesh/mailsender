@@ -1,0 +1,54 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}{% if account %}✏️ Edit Account{% else %}➕ Add Gmail Account{% endif %}{% endblock %}
+{% block subheading %}Configure SMTP credentials{% endblock %}
+{% block content %}
+<div class="card" style="max-width:720px;">
+    <form method="post">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Friendly Name *</label>
+                <input type="text" name="name" value="{{ account.name|default:'' }}" placeholder="e.g. Sales Inbox" required>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Email Address *</label>
+                <input type="email" name="email" value="{{ account.email|default:'' }}" placeholder="you@gmail.com" required>
+            </div>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Sender Display Name</label>
+            <input type="text" name="sender_name" value="{{ account.sender_name|default:'' }}" placeholder="Your Name or Company">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Gmail App Password * <span style="color:var(--text-muted);font-weight:400;">(16 characters)</span></label>
+            <input type="text" name="app_password" placeholder="{% if account.app_password %}•••• •••• •••• ••••  (leave blank to keep existing){% else %}xxxx xxxx xxxx xxxx{% endif %}" {% if not account %}required{% endif %} style="font-family:monospace;letter-spacing:1px;">
+            <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+                Generate at: <a class="link" href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">SMTP Host</label>
+                <input type="text" name="smtp_host" value="{{ account.smtp_host|default:'smtp.gmail.com' }}">
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Port</label>
+                <input type="number" name="smtp_port" value="{{ account.smtp_port|default:587 }}">
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Daily Limit</label>
+                <input type="number" name="daily_limit" value="{{ account.daily_limit|default:400 }}">
+            </div>
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px;">
+            <label class="checkbox"><input type="checkbox" name="use_tls" {% if account.use_tls or not account %}checked{% endif %}> Use TLS (recommended)</label>
+            <label class="checkbox"><input type="checkbox" name="is_default" {% if account.is_default %}checked{% endif %}> Set as Default</label>
+            <label class="checkbox"><input type="checkbox" name="is_active" {% if account.is_active or not account %}checked{% endif %}> Active</label>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <button type="submit" class="btn btn-primary">💾 Save Account</button>
+            <a href="{% url 'email_accounts' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

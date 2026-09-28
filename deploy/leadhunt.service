@@ -1,0 +1,39 @@
+# systemd service: /etc/systemd/system/leadhunt.service
+# Enable + start:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable leadhunt
+#   sudo systemctl start leadhunt
+#   sudo systemctl status leadhunt
+# Logs:
+#   sudo journalctl -u leadhunt -f
+
+[Unit]
+Description=LeadHunt Django + Gunicorn
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User=leadhunt
+Group=leadhunt
+WorkingDirectory=/opt/leadhunt
+EnvironmentFile=/opt/leadhunt/.env
+Environment="DJANGO_SETTINGS_MODULE=core.settings_prod"
+Environment="PATH=/opt/leadhunt/venv/bin"
+ExecStart=/opt/leadhunt/venv/bin/gunicorn -c deploy/gunicorn.conf.py core.wsgi:application
+Restart=always
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=30
+
+# Resource limits
+LimitNOFILE=4096
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

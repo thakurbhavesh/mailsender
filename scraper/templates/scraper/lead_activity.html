@@ -1,0 +1,175 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🧾 {{ place.name }}{% endblock %}
+{% block subheading %}Is lead pe ab tak kya-kya hua — pura record{% endblock %}
+{% block content %}
+
+<style>
+.la-top { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+.la-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:18px; }
+.la-kpi .k { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 14px; }
+.la-kpi .k .lab { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); font-weight:700; }
+.la-kpi .k .val { font-size:22px; font-weight:800; margin-top:3px; }
+.la-kpi .k .sub { font-size:11px; color:var(--text-muted); }
+
+.tl { position:relative; padding-left:34px; }
+.tl:before { content:''; position:absolute; left:13px; top:6px; bottom:6px; width:2px; background:var(--border); }
+.tl-item { position:relative; padding:0 0 20px 0; }
+.tl-dot { position:absolute; left:-34px; top:0; width:28px; height:28px; border-radius:50%;
+          background:#fff; border:2px solid var(--border); display:flex; align-items:center;
+          justify-content:center; font-size:13px; }
+.tl-item.k-open  .tl-dot { border-color:#22c55e; background:#f0fdf4; }
+.tl-item.k-click .tl-dot { border-color:#ef4444; background:#fef2f2; }
+.tl-item.k-sent  .tl-dot { border-color:#3b82f6; background:#eff6ff; }
+.tl-item.k-call  .tl-dot { border-color:#f59e0b; background:#fffbeb; }
+.tl-item.k-failed .tl-dot { border-color:#ef4444; background:#fef2f2; }
+.tl-title { font-weight:700; font-size:14px; }
+.tl-detail { font-size:12.5px; color:var(--text-muted); margin-top:2px; word-break:break-word; }
+.tl-when { font-size:11px; color:#94a3b8; margin-top:3px; }
+
+.mail-card { border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
+.mail-card.opened { border-left:4px solid #22c55e; }
+.mail-card.unopened { border-left:4px solid #f59e0b; }
+.mail-card.failed { border-left:4px solid #ef4444; }
+.mail-row { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.mail-stats { display:flex; gap:16px; flex-wrap:wrap; font-size:12px; margin-top:8px;
+              padding-top:8px; border-top:1px dashed var(--border); }
+.mail-stats b { font-variant-numeric:tabular-nums; }
+.pill { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; }
+.pill-opened { background:#dcfce7; color:#15803d; }
+.pill-unopened { background:#fef3c7; color:#92400e; }
+.pill-failed { background:#fee2e2; color:#b91c1c; }
+</style>
+
+<div class="la-top">
+    <a href="{% url 'lead_management' %}" class="btn btn-secondary btn-sm">← Lead Management</a>
+    <a href="{% url 'lead_detail' place.id %}" class="btn btn-secondary btn-sm">Lead profile</a>
+    {% if place.email %}<a href="{% url 'compose' %}?place={{ place.id }}" class="btn btn-primary btn-sm">📧 Mail bhejo</a>{% endif %}
+    <span class="badge badge-{{ place.lead_status }}">{{ place.get_lead_status_display }}</span>
+    {% if summary.is_untouched %}
+        <span class="pill pill-unopened">🆕 Is lead pe abhi tak koi kaam nahi hua</span>
+    {% endif %}
+</div>
+
+<div class="la-kpi">
+    <div class="k"><div class="lab">Mails bheje</div><div class="val">{{ summary.emails_sent }}</div>
+        <div class="sub">{% if summary.emails_failed %}{{ summary.emails_failed }} fail{% else %}koi fail nahi{% endif %}</div></div>
+    <div class="k"><div class="lab">👀 Open hue</div><div class="val">{{ summary.opened_mails }}</div>
+        <div class="sub">{{ summary.open_rate }}% open rate</div></div>
+    <div class="k"><div class="lab">Total opens</div><div class="val">{{ summary.total_opens }}</div>
+        <div class="sub">baar khola gaya</div></div>
+    <div class="k"><div class="lab">🔗 Clicks</div><div class="val">{{ summary.total_clicks }}</div>
+        <div class="sub">link clicks</div></div>
+    <div class="k"><div class="lab">📞 Calls</div><div class="val">{{ summary.calls }}</div>
+        <div class="sub">{% if summary.last_call %}{{ summary.last_call.created_at|date:'d M' }}{% else %}kabhi nahi{% endif %}</div></div>
+    <div class="k"><div class="lab">Pehla mail</div><div class="val" style="font-size:14px;">
+        {% if summary.first_sent %}{{ summary.first_sent|date:'d M Y' }}{% else %}—{% endif %}</div>
+        <div class="sub">{% if summary.last_sent %}last: {{ summary.last_sent|date:'d M' }}{% endif %}</div></div>
+    <div class="k"><div class="lab">Aakhri open</div><div class="val" style="font-size:14px;">
+        {% if summary.last_open %}{{ summary.last_open|date:'d M, H:i' }}{% else %}—{% endif %}</div>
+        <div class="sub">{% if summary.last_open %}{{ summary.last_open|timesince }} pehle{% endif %}</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:start;">
+
+    <!-- ───── Timeline ───── -->
+    <div class="card">
+        <div class="card-header"><h2>🕒 Activity Timeline <span class="h2-count">{{ timeline|length }}</span></h2></div>
+        <div class="tl">
+        {% for e in timeline %}
+            <div class="tl-item k-{{ e.kind }}">
+                <div class="tl-dot">{{ e.icon }}</div>
+                <div class="tl-title">{{ e.title }}</div>
+                {% if e.detail %}<div class="tl-detail">{{ e.detail }}</div>{% endif %}
+                <div class="tl-when">{{ e.at|date:'d M Y, H:i' }} · {{ e.at|timesince }} pehle{% if e.meta %} · {{ e.meta }}{% endif %}</div>
+            </div>
+        {% empty %}
+            <div style="color:var(--text-muted);padding:20px;">Koi activity nahi.</div>
+        {% endfor %}
+        </div>
+    </div>
+
+    <!-- ───── Per-mail tracking ───── -->
+    <div>
+        <div class="card" style="margin-bottom:14px;">
+            <div class="card-header"><h2>📧 Har mail ka tracking <span class="h2-count">{{ emails|length }}</span></h2></div>
+            {% for m in emails %}
+            <div class="mail-card {% if m.status == 'failed' %}failed{% elif m.opened_at %}opened{% else %}unopened{% endif %}">
+                <div class="mail-row">
+                    <strong style="font-size:13px;">{{ m.subject|truncatechars:52 }}</strong>
+                    {% if m.status == 'failed' %}<span class="pill pill-failed">Failed</span>
+                    {% elif m.opened_at %}<span class="pill pill-opened">Opened</span>
+                    {% else %}<span class="pill pill-unopened">Not opened</span>{% endif %}
+                </div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">
+                    To {{ m.to_email }} · {{ m.template.name|default:'Custom' }}
+                    {% if m.account %} · via {{ m.account.email }}{% endif %}
+                </div>
+                <div class="mail-stats">
+                    <span>📤 Bheja: <b>{% if m.sent_at %}{{ m.sent_at|date:'d M, H:i' }}{% else %}—{% endif %}</b></span>
+                    <span>👀 Open: <b>{% if m.opened_at %}{{ m.opened_at|date:'d M, H:i' }}{% else %}nahi{% endif %}</b></span>
+                    <span>🔁 Baar: <b>{{ m.opened_count }}</b></span>
+                    <span>🔗 Clicks: <b>{{ m.clicked_count }}</b></span>
+                </div>
+                {% if m.last_opened_at and m.opened_count > 1 %}
+                    <div style="font-size:11px;color:#059669;margin-top:6px;">
+                        Aakhri baar khola: {{ m.last_opened_at|date:'d M Y, H:i' }} ({{ m.last_opened_at|timesince }} pehle)
+                    </div>
+                {% endif %}
+                {% if m.clicks %}
+                    <div style="margin-top:8px;font-size:11.5px;">
+                        <strong>Clicked links:</strong>
+                        {% for c in m.clicks %}
+                        <div style="color:var(--text-muted);margin-top:2px;">
+                            🔗 <a href="{{ c.url }}" target="_blank" class="link">{{ c.url|truncatechars:52 }}</a>
+                            <span style="color:#94a3b8;">— {{ c.at|slice:':16' }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if m.error_message %}
+                    <div style="font-size:11.5px;color:#b91c1c;margin-top:6px;">⚠ {{ m.error_message|truncatechars:150 }}</div>
+                {% endif %}
+                <div style="margin-top:8px;">
+                    <a href="{% url 'email_log_detail' m.id %}" class="btn btn-secondary btn-sm">Mail dekho</a>
+                </div>
+            </div>
+            {% empty %}
+            <div style="color:var(--text-muted);text-align:center;padding:24px;font-size:13px;">
+                Is lead ko abhi tak koi mail nahi gaya.
+                {% if place.email %}<br><a href="{% url 'compose' %}?place={{ place.id }}" class="link">Abhi bhejo →</a>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+            <div class="card-header"><h2>📞 Call log <span class="h2-count">{{ calls|length }}</span></h2></div>
+            {% for c in calls %}
+            <div style="padding:9px 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                    <strong>{{ c.get_outcome_display }}</strong>
+                    <span style="font-size:11px;color:var(--text-muted);">{{ c.created_at|date:'d M, H:i' }}</span>
+                </div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
+                    by {{ c.caller.username }}{% if c.notes %} — {{ c.notes|truncatechars:90 }}{% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div style="color:var(--text-muted);font-size:13px;padding:14px 0;">Koi call nahi hui.</div>
+            {% endfor %}
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2>👤 Assignments <span class="h2-count">{{ assignments|length }}</span></h2></div>
+            {% for a in assignments %}
+            <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;
+                        display:flex;justify-content:space-between;">
+                <span>{{ a.caller.username }}</span>
+                <span style="font-size:11px;color:var(--text-muted);">{{ a.get_status_display }} · {{ a.assigned_at|date:'d M' }}</span>
+            </div>
+            {% empty %}
+            <div style="color:var(--text-muted);font-size:13px;padding:14px 0;">Kisi ko assign nahi hua.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{# Reusable date range filter widget #}
+<form method="get" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px;padding:14px;background:var(--card);border-radius:10px;border:1px solid var(--border);">
+    <div style="flex:0 0 200px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Period</label>
+        <select name="preset" onchange="this.form.submit()" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);font-family:inherit;">
+            <option value="today" {% if preset == 'today' %}selected{% endif %}>Today</option>
+            <option value="yesterday" {% if preset == 'yesterday' %}selected{% endif %}>Yesterday</option>
+            <option value="last7" {% if preset == 'last7' %}selected{% endif %}>Last 7 Days</option>
+            <option value="last30" {% if preset == 'last30' %}selected{% endif %}>Last 30 Days</option>
+            <option value="month" {% if preset == 'month' %}selected{% endif %}>This Month</option>
+            <option value="custom" {% if preset == 'custom' %}selected{% endif %}>Custom</option>
+        </select>
+    </div>
+    {% if preset == 'custom' %}
+    <div>
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;color:var(--text-muted);">From</label>
+        <input type="date" name="start" value="{{ start|date:'Y-m-d' }}" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);font-family:inherit;">
+    </div>
+    <div>
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;color:var(--text-muted);">To</label>
+        <input type="date" name="end" value="{{ end|date:'Y-m-d' }}" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);font-family:inherit;">
+    </div>
+    <button type="submit" style="padding:10px 20px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">Apply</button>
+    {% endif %}
+    {% block extra_filters %}{% endblock %}
+    <div style="margin-left:auto;align-self:center;font-size:13px;color:var(--text-muted);">
+        Showing: <strong>{{ start|date:'d M' }}</strong> → <strong>{{ end|date:'d M Y' }}</strong>
+    </div>
+</form>

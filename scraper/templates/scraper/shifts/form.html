@@ -1,0 +1,85 @@
+{% extends 'scraper/base.html' %}
+{% load extras %}
+{% block heading %}{% if shift %}✏️ Edit Shift: {{ shift.name }}{% else %}+ New Shift{% endif %}{% endblock %}
+{% block content %}
+
+<a href="{% url 'shifts_list' %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">← Back to Shifts</a>
+
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:28px;margin-top:14px;max-width:680px;">
+<form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Shift Name *</label>
+        <input type="text" name="name" value="{{ shift.name|default:'' }}" required placeholder="e.g. Morning Shift" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Start Time *</label>
+            <input type="time" name="start_time" value="{{ shift.start_time|time:'H:i'|default:'09:00' }}" required style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">End Time *</label>
+            <input type="time" name="end_time" value="{{ shift.end_time|time:'H:i'|default:'17:00' }}" required style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+    </div>
+
+    <div style="margin-bottom:14px;">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">Working Days *</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_mon" {% if not shift or 'mon' in shift.day_list %}checked{% endif %}> Mon
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_tue" {% if not shift or 'tue' in shift.day_list %}checked{% endif %}> Tue
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_wed" {% if not shift or 'wed' in shift.day_list %}checked{% endif %}> Wed
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_thu" {% if not shift or 'thu' in shift.day_list %}checked{% endif %}> Thu
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_fri" {% if not shift or 'fri' in shift.day_list %}checked{% endif %}> Fri
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_sat" {% if shift and 'sat' in shift.day_list %}checked{% endif %}> Sat
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card-hover);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+                <input type="checkbox" name="day_sun" {% if shift and 'sun' in shift.day_list %}checked{% endif %}> Sun
+            </label>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;">
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Timezone</label>
+            <select name="timezone_name" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                {% for tz in 'Asia/Kolkata,Asia/Dubai,Asia/Singapore,Europe/London,America/New_York,America/Los_Angeles,UTC'|split:',' %}
+                <option value="{{ tz }}" {% if shift.timezone_name == tz or not shift and tz == 'Asia/Kolkata' %}selected{% endif %}>{{ tz }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Color</label>
+            <input type="color" name="color" value="{{ shift.color|default:'#6366f1' }}" style="width:100%;height:42px;padding:2px;border:1.5px solid var(--border);border-radius:8px;background:var(--input-bg);cursor:pointer;">
+        </div>
+    </div>
+
+    {% if shift %}
+    <div style="margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;">
+            <input type="checkbox" name="is_active" {% if shift.is_active %}checked{% endif %}>
+            Active (uncheck to disable this shift)
+        </label>
+    </div>
+    {% endif %}
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:18px;">
+        <a href="{% url 'shifts_list' %}" style="padding:10px 18px;border-radius:8px;background:var(--card-hover);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;">Cancel</a>
+        <button type="submit" style="padding:10px 22px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">💾 {% if shift %}Update Shift{% else %}Create Shift{% endif %}</button>
+    </div>
+</form>
+</div>
+
+{% endblock %}

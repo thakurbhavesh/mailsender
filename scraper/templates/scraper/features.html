@@ -1,0 +1,439 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🎁 Features Overview{% endblock %}
+{% block subheading %}Everything LeadHunt can do — Complete B2B Sales Engagement Platform{% endblock %}
+{% block content %}
+
+<style>
+.feat-section { margin-bottom: 24px; }
+.feat-section h2 {
+    font-size: 18px; margin-bottom: 14px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+}
+.feat-section h2 .count { background:#eef2ff;color:#3730a3;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700; }
+.feat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.feat-card {
+    background: white; border-radius: 14px; padding: 18px;
+    border: 1.5px solid var(--border); transition: all .2s;
+    display: flex; gap: 14px; align-items: flex-start;
+}
+.feat-card:hover { border-color: var(--primary); box-shadow: 0 8px 20px rgba(0,0,0,.05); transform: translateY(-2px); }
+.feat-card.live { border-color: #6ee7b7; background: linear-gradient(135deg,#fafcfb,white); }
+.feat-card.new { border-color: #c4b5fd; background: linear-gradient(135deg,#faf5ff,white); position:relative; }
+.feat-card.new::after {
+    content: 'NEW'; position: absolute; top: 8px; right: 8px;
+    background: linear-gradient(135deg,#8b5cf6,#ec4899);
+    color: white; font-size: 9px; font-weight: 800; padding: 3px 8px;
+    border-radius: 999px; letter-spacing: 1px;
+}
+.feat-icon { font-size: 30px; flex-shrink: 0; line-height: 1; }
+.feat-body { flex: 1; min-width: 0; }
+.feat-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.feat-status { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px; }
+.feat-status.live { background: #d1fae5; color: #065f46; }
+.feat-status.soon { background: #fef3c7; color: #92400e; }
+.feat-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.feat-link { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--primary); font-weight: 600; text-decoration: none; }
+.feat-link:hover { text-decoration: underline; }
+.hero {
+    background: linear-gradient(135deg,#6366f1,#ec4899);
+    color: white; border-radius: 16px; padding: 28px 32px;
+    margin-bottom: 24px; box-shadow: 0 10px 30px rgba(99,102,241,0.3);
+}
+.hero h2 { color: white; margin: 0 0 8px; font-size: 24px; }
+.hero-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 14px; margin-top: 18px; }
+.hero-stat { background: rgba(255,255,255,0.15); padding: 14px; border-radius: 12px; backdrop-filter: blur(8px); }
+.hero-stat-n { font-size: 28px; font-weight: 800; line-height: 1; }
+.hero-stat-l { font-size: 11px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-top: 4px; }
+</style>
+
+<div class="hero">
+    <h2>🎯 LeadHunt — Complete B2B Sales Engagement Platform</h2>
+    <p style="opacity:.95;font-size:15px;margin:0;">Scrape leads from any source · Build calling teams · Drip campaigns · Track everything in real-time. India-ready (IST, ₹ INR, WhatsApp).</p>
+    <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-n">12+</div><div class="hero-stat-l">Modules</div></div>
+        <div class="hero-stat"><div class="hero-stat-n">38+</div><div class="hero-stat-l">URL Endpoints</div></div>
+        <div class="hero-stat"><div class="hero-stat-n">21</div><div class="hero-stat-l">Database Models</div></div>
+        <div class="hero-stat"><div class="hero-stat-n">54+</div><div class="hero-stat-l">Pages / Templates</div></div>
+    </div>
+</div>
+
+<!-- ═══ LEAD GENERATION ════════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>🕷️ Lead Generation <span class="count">4 sources</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card live">
+            <div class="feat-icon">🗺️</div>
+            <div class="feat-body">
+                <div class="feat-title">Google Maps Scraper <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Selenium-powered scraping with smart scrolling, multi-XPath fallbacks. Pulls phone, rating, hours, photos, claimed status.</div>
+                <a href="{% url 'dashboard' %}" class="feat-link">Start Job →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">📱</div>
+            <div class="feat-body">
+                <div class="feat-title">JustDial Scraper 🇮🇳 <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">India-specific B2B platform. City-wise filtering for local businesses.</div>
+                <a href="{% url 'dashboard' %}" class="feat-link">Start Job →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">🏭</div>
+            <div class="feat-body">
+                <div class="feat-title">IndiaMART Scraper 🇮🇳 <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">B2B suppliers, manufacturers, wholesalers.</div>
+                <a href="{% url 'dashboard' %}" class="feat-link">Start Job →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📥</div>
+            <div class="feat-body">
+                <div class="feat-title">CSV / Excel Import <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Upload from any source — LinkedIn, conferences, vendor lists. Drag-drop file, auto-detect columns, manual mapping, dedupe.</div>
+                <a href="{% url 'import_home' %}" class="feat-link">Upload File →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">➕</div>
+            <div class="feat-body">
+                <div class="feat-title">Quick Add Lead <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Add a single lead manually with all fields.</div>
+                <a href="{% url 'quick_add' %}" class="feat-link">Add Lead →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">✨</div>
+            <div class="feat-body">
+                <div class="feat-title">Auto Enrichment <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Scrape websites for emails + social links. Validates emails. Auto-scores each lead 0-100.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CALLING TEAM ═══════════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>📞 Calling Team Suite <span class="count">8 modules</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card new">
+            <div class="feat-icon">🎯</div>
+            <div class="feat-body">
+                <div class="feat-title">Manual Lead Assignment <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Filter by area/city/category/source/score → pick caller → bulk assign. Shows caller's current load.</div>
+                <a href="{% url 'manual_assign' %}" class="feat-link">Assign Leads →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">⚙️</div>
+            <div class="feat-body">
+                <div class="feat-title">Auto Assignment <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">100 leads auto-assigned per caller on login. Smart batch refill when pending hits 0. Best leads first by score.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📊</div>
+            <div class="feat-body">
+                <div class="feat-title">Live Monitor <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Real-time view of who's online, today's calls, conversions. Auto-refresh every 30s.</div>
+                <a href="{% url 'admin_monitor' %}" class="feat-link">Open Monitor →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">👥</div>
+            <div class="feat-body">
+                <div class="feat-title">Team Members <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Add/edit callers with custom quotas. 3 roles: Admin / Manager / Caller.</div>
+                <a href="{% url 'members_list' %}" class="feat-link">Manage →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🌳</div>
+            <div class="feat-body">
+                <div class="feat-title">Team Hierarchy <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Manager → Caller reporting structure. Managers see only their team.</div>
+                <a href="{% url 'team_hierarchy' %}" class="feat-link">View Tree →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">⏰</div>
+            <div class="feat-body">
+                <div class="feat-title">Shift Management <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Define shifts (Morning, Evening), assign callers with effective dates. Live "Active Now" indicator.</div>
+                <a href="{% url 'shifts_list' %}" class="feat-link">Manage Shifts →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🗓️</div>
+            <div class="feat-body">
+                <div class="feat-title">Attendance + Breaks <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Auto attendance on login. Calendar view per month. Break types (Short/Lunch/Meeting). Multi-session support.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🎯</div>
+            <div class="feat-body">
+                <div class="feat-title">Goals & Targets <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Monthly targets per caller (calls/conversions/revenue). Real-time progress bars.</div>
+                <a href="{% url 'goals_list' %}" class="feat-link">Set Goals →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">💰</div>
+            <div class="feat-body">
+                <div class="feat-title">Incentive Calculator 🇮🇳 <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">₹ per conversion/interested/answered + bonus threshold. Auto-calc monthly payouts in INR.</div>
+                <a href="{% url 'incentives' %}" class="feat-link">Calculate →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CALLER WORKSPACE ══════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>📱 Caller Workspace <span class="count">Power Features</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card new">
+            <div class="feat-icon">📋</div>
+            <div class="feat-body">
+                <div class="feat-title">Smart Lead Cards <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Per-lead card with: Big call button, WhatsApp, Email, Site. 9 quick-outcome buttons. Click any → status auto-updates.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📝</div>
+            <div class="feat-body">
+                <div class="feat-title">Auto-Save Notes <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Type notes — save automatically 0.8s after stop typing. Green dot = saved.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🎤</div>
+            <div class="feat-body">
+                <div class="feat-title">Voice Notes <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Click mic → speak in Hindi/English → text appears + auto-saves. Web Speech API powered.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">@</div>
+            <div class="feat-body">
+                <div class="feat-title">@Mentions <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Type "@bhavesh" in notes → teammate gets notification with link to lead.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">⏰</div>
+            <div class="feat-body">
+                <div class="feat-title">Callback Reminders <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Schedule callbacks with datetime. Banner alert when due. Click goes to lead.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📱</div>
+            <div class="feat-body">
+                <div class="feat-title">Mobile + PWA <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Install as app on phone. Hamburger sidebar. Tap phone number → native dialer.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ ANALYTICS ═════════════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>📊 Analytics <span class="count">4 dashboards</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card new">
+            <div class="feat-icon">🏆</div>
+            <div class="feat-body">
+                <div class="feat-title">Caller Leaderboard <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Podium for top 3 🥇🥈🥉 + full rankings table. Today/Week/Month/Custom range filters.</div>
+                <a href="{% url 'analytics_leaderboard' %}" class="feat-link">View →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🪜</div>
+            <div class="feat-body">
+                <div class="feat-title">Conversion Funnel <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Scraped → Assigned → Called → Answered → Interested → Converted. Drop-off % at each stage.</div>
+                <a href="{% url 'analytics_funnel' %}" class="feat-link">View →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🔥</div>
+            <div class="feat-body">
+                <div class="feat-title">Activity Heatmap <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Day × Hour grid showing call volume + conversions. "Best time to call" insights.</div>
+                <a href="{% url 'analytics_heatmap' %}" class="feat-link">View →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📈</div>
+            <div class="feat-body">
+                <div class="feat-title">Custom Report Builder <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">4 entities × custom dimensions × metrics × 4 chart types. Save, share, export CSV.</div>
+                <a href="{% url 'reports_list' %}" class="feat-link">Build Report →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ EMAIL ═════════════════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>📧 Email Outreach <span class="count">5 modules</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card live">
+            <div class="feat-icon">🚀</div>
+            <div class="feat-body">
+                <div class="feat-title">Compose & Send <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Single or bulk send via Gmail SMTP. Throttled. Daily quota tracking.</div>
+                <a href="{% url 'compose_bulk' %}" class="feat-link">Compose →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📨</div>
+            <div class="feat-body">
+                <div class="feat-title">Drip Sequences <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Multi-step campaigns. "Send template A → wait 3 days → send template B". Auto-stop on reply/conversion.</div>
+                <a href="{% url 'sequences_list' %}" class="feat-link">Sequences →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📊</div>
+            <div class="feat-body">
+                <div class="feat-title">Open + Click Tracking <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Invisible pixel tracks opens. Click rewriter logs every link tap with timestamp.</div>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">📝</div>
+            <div class="feat-body">
+                <div class="feat-title">Email Templates <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Variable substitution: {{name}}, {{category}}, {{city}}. Preview before send.</div>
+                <a href="{% url 'email_templates' %}" class="feat-link">Templates →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">📜</div>
+            <div class="feat-body">
+                <div class="feat-title">Email History <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Every email logged with status, account, recipient, opens, clicks.</div>
+                <a href="{% url 'email_history' %}" class="feat-link">History →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ CALENDAR & MEETINGS ═══════════════════════════════════ -->
+<div class="feat-section">
+    <h2>📅 Calendar Booking <span class="count">Calendly-like</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card new">
+            <div class="feat-icon">⚙️</div>
+            <div class="feat-body">
+                <div class="feat-title">Personal Booking Page <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Calendly-style. Each user gets <code>/meet/&lt;your-slug&gt;/</code>. Set working hours, slot duration, buffer, advance days.</div>
+                <a href="{% url 'my_schedule' %}" class="feat-link">Set Up →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">📅</div>
+            <div class="feat-body">
+                <div class="feat-title">My Meetings <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Upcoming + past meetings. Mark done/no-show/cancel. Auto-links to existing leads by email.</div>
+                <a href="{% url 'meetings_list' %}" class="feat-link">View →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ AI ═══════════════════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>🤖 AI (Gemini) <span class="count">Powered</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card live">
+            <div class="feat-icon">✍️</div>
+            <div class="feat-body">
+                <div class="feat-title">AI Email Writer <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Gemini generates personalized cold emails per lead. Custom tone, length.</div>
+                <a href="{% url 'ai_writer' %}" class="feat-link">Generate →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">💬</div>
+            <div class="feat-body">
+                <div class="feat-title">Reply Assistant <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Paste a reply, get suggested response based on tone + intent.</div>
+                <a href="{% url 'ai_reply' %}" class="feat-link">Open →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ DATA QUALITY & TOOLS ══════════════════════════════════ -->
+<div class="feat-section">
+    <h2>🧹 Data Quality <span class="count">Power Tools</span></h2>
+    <div class="feat-grid">
+        <div class="feat-card new">
+            <div class="feat-icon">🔍</div>
+            <div class="feat-body">
+                <div class="feat-title">Deduplication <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Find duplicates by phone/email/name. Smart merge fills empty fields from duplicates.</div>
+                <a href="{% url 'dedup_home' %}" class="feat-link">Find Dupes →</a>
+            </div>
+        </div>
+        <div class="feat-card live">
+            <div class="feat-icon">📥</div>
+            <div class="feat-body">
+                <div class="feat-title">Excel/CSV Export <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Export filtered leads to Excel or CSV with customized columns.</div>
+                <a href="{% url 'export_config' %}" class="feat-link">Export →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">💬</div>
+            <div class="feat-body">
+                <div class="feat-title">WhatsApp Bulk <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Generate personalized WhatsApp links for any number of leads.</div>
+                <a href="{% url 'whatsapp_bulk' %}" class="feat-link">Open →</a>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">🔔</div>
+            <div class="feat-body">
+                <div class="feat-title">Notifications <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">Bell with unread count. @mention notifications. Deal-closed alerts to admins.</div>
+                <a href="{% url 'notifications_list' %}" class="feat-link">View →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ INDIA-SPECIFIC ════════════════════════════════════════ -->
+<div class="feat-section">
+    <h2>🇮🇳 India-Specific Features</h2>
+    <div class="feat-grid">
+        <div class="feat-card new">
+            <div class="feat-icon">⏰</div>
+            <div class="feat-body">
+                <div class="feat-title">IST Timezone (Default) <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">All times display in Asia/Kolkata IST. Attendance, meetings, call logs.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">₹</div>
+            <div class="feat-body">
+                <div class="feat-title">Indian Currency Format <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">₹1,23,456 grouping. Incentive payouts in INR.</div>
+            </div>
+        </div>
+        <div class="feat-card new">
+            <div class="feat-icon">💬</div>
+            <div class="feat-body">
+                <div class="feat-title">WhatsApp-First UI <span class="feat-status live">Live</span></div>
+                <div class="feat-desc">WhatsApp button on every lead. Indian phone format (+91 prefix).</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

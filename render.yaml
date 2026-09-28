@@ -1,0 +1,45 @@
+# Render Blueprint — one-click deploy
+# Push this file to GitHub, then on Render Dashboard:
+#   New > Blueprint > select your repo > Deploy
+# It auto-creates the web service + Postgres database.
+
+services:
+  - type: web
+    name: leadhunt
+    runtime: python
+    plan: starter             # $7/month (or 'free' for testing — sleeps after 15min idle)
+    region: singapore         # closest to India (also: oregon, virginia, frankfurt)
+    branch: main
+    autoDeploy: true
+    buildCommand: ./build.sh
+    startCommand: gunicorn -c deploy/gunicorn.conf.py core.wsgi:application
+    healthCheckPath: /login/
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: core.settings_prod
+      - key: PYTHON_VERSION
+        value: 3.12.4
+      - key: SECRET_KEY
+        generateValue: true                    # Render auto-generates a strong one
+      - key: SYNC_API_TOKEN
+        generateValue: true                    # Random token for /api/sync/
+      - key: ALLOWED_HOSTS
+        value: leadhunt.onrender.com           # change after you set custom domain
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://leadhunt.onrender.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: leadhunt-db
+          property: connectionString
+      - key: WEB_CONCURRENCY                   # gunicorn workers
+        value: 2
+      # Optional — add later
+      # - key: SENTRY_DSN
+      #   sync: false
+
+databases:
+  - name: leadhunt-db
+    plan: starter             # $7/month, 1GB, daily backups
+    databaseName: leadhunt
+    user: leadhunt
+    region: singapore

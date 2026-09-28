@@ -1,0 +1,173 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}⚙️ Gemini AI Settings{% endblock %}
+{% block subheading %}Models, tokens & live testing{% endblock %}
+{% block content %}
+
+<div class="stats-grid" style="grid-template-columns:repeat(4, 1fr);">
+    <div class="stat s1"><span class="icon">🤖</span><div class="label">Active Model</div><div class="value" style="font-size:14px;font-weight:700;line-height:1.4;margin-top:8px;">{{ setting.model }}</div></div>
+    <div class="stat s2"><span class="icon">📊</span><div class="label">Requests Today</div><div class="value">{{ overall.requests }}</div></div>
+    <div class="stat s3"><span class="icon">🎯</span><div class="label">Tokens Today</div><div class="value">{{ overall.total_tokens }}</div></div>
+    <div class="stat s4"><span class="icon">🌐</span><div class="label">All-Time Total</div><div class="value">{{ overall_all.total_tokens }}</div></div>
+</div>
+
+<!-- ── Settings Form ── -->
+<form method="post" id="settingsForm">
+    {% csrf_token %}
+    <div class="row">
+        <div class="card">
+            <h2>🔐 API Key</h2>
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Gemini API Key</label>
+                <input type="text" name="api_key" placeholder="{% if setting.api_key %}•••••••• (leave blank to keep){% else %}Paste here{% endif %}" style="font-family:monospace;">
+                <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
+                    Free key: <a class="link" href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>
+                </div>
+            </div>
+            <label class="checkbox" style="margin-bottom:14px;"><input type="checkbox" name="is_active" {% if setting.is_active %}checked{% endif %}> Enable AI features</label>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn btn-primary">💾 Save</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🧪 Quick Test</h2>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Test the currently selected model with a custom prompt.</p>
+            <div style="margin-bottom:10px;">
+                <textarea id="testPrompt" rows="3" placeholder="Type any question or use default...">In one sentence, give a creative tagline for a lead generation SaaS.</textarea>
+            </div>
+            <button type="button" id="testBtn" class="btn btn-success" style="width:100%;font-size:14px;">⚡ Run Test</button>
+            <div id="testResult" style="display:none;margin-top:12px;padding:12px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+                <div id="testOutput" style="font-size:13px;line-height:1.6;color:#166534;white-space:pre-wrap;"></div>
+                <div id="testTokens" style="margin-top:10px;padding-top:10px;border-top:1px solid #86efac;font-size:12px;color:#15803d;"></div>
+            </div>
+            <div id="testError" style="display:none;margin-top:12px;padding:10px;background:#fee2e2;color:#991b1b;border-radius:8px;font-size:13px;"></div>
+        </div>
+    </div>
+
+    <!-- ── Model Picker (cards) ── -->
+    <div class="card">
+        <div class="card-header">
+            <h2>🎨 Select Model <span class="h2-count">{{ models|length }} options</span></h2>
+            <div style="font-size:13px;color:var(--text-muted);">Click a card to select, then Save.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+            {% for m in models %}
+            <label class="model-card {% if m.is_current %}active{% endif %}" style="cursor:pointer;border:2px solid {% if m.is_current %}#6366f1{% else %}var(--border){% endif %};border-radius:14px;padding:16px;background:{% if m.is_current %}linear-gradient(135deg,#fafbff,white){% else %}white{% endif %};display:block;transition:all .15s;">
+                <input type="radio" name="model" value="{{ m.id }}" {% if m.is_current %}checked{% endif %} style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                    <div>
+                        <div style="font-weight:700;font-size:15px;">{{ m.name }}</div>
+                        <div style="font-size:11px;color:var(--text-muted);font-family:monospace;margin-top:2px;">{{ m.id }}</div>
+                    </div>
+                    {% if m.is_current %}<span class="badge badge-completed">✓ Active</span>
+                    {% elif m.badge %}<span class="badge badge-running">{{ m.badge }}</span>{% endif %}
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin:8px 0;line-height:1.5;min-height:32px;">{{ m.desc }}</p>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:11px;">
+                    <div style="background:#f1f5f9;padding:6px 8px;border-radius:6px;">
+                        <div style="color:#64748b;font-weight:600;">RPM (per min)</div>
+                        <div style="font-weight:700;color:#0f172a;">{{ m.free_rpm }}</div>
+                    </div>
+                    <div style="background:#f1f5f9;padding:6px 8px;border-radius:6px;">
+                        <div style="color:#64748b;font-weight:600;">RPD (per day)</div>
+                        <div style="font-weight:700;color:#0f172a;">{{ m.free_rpd }}</div>
+                    </div>
+                    <div style="background:#f1f5f9;padding:6px 8px;border-radius:6px;">
+                        <div style="color:#64748b;font-weight:600;">TPM (tokens/min)</div>
+                        <div style="font-weight:700;color:#0f172a;">{{ m.free_tpm|stringformat:'d' }}</div>
+                    </div>
+                    <div style="background:#f1f5f9;padding:6px 8px;border-radius:6px;">
+                        <div style="color:#64748b;font-weight:600;">Context</div>
+                        <div style="font-weight:700;color:#0f172a;">{{ m.context }}</div>
+                    </div>
+                </div>
+
+                <!-- Live usage today -->
+                <div style="margin-top:10px;font-size:11px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                        <span style="color:#64748b;">Today's usage</span>
+                        <strong style="color:{% if m.rpd_pct > 80 %}#ef4444{% elif m.rpd_pct > 50 %}#f59e0b{% else %}#10b981{% endif %};">{{ m.requests_today }}/{{ m.free_rpd }}</strong>
+                    </div>
+                    <div class="cat-progress" style="height:5px;">
+                        <div style="height:100%;width:{{ m.rpd_pct }}%;background:{% if m.rpd_pct > 80 %}#ef4444{% elif m.rpd_pct > 50 %}#f59e0b{% else %}#10b981{% endif %};"></div>
+                    </div>
+                    <div style="margin-top:4px;color:var(--text-muted);">
+                        ✓ {{ m.rpd_remaining }} requests left today · {{ m.tokens_today }} tokens used
+                    </div>
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+        <div style="margin-top:14px;text-align:center;">
+            <button type="submit" class="btn btn-primary" style="padding:12px 36px;font-size:15px;">💾 Save Selected Model</button>
+        </div>
+    </div>
+</form>
+
+<style>
+.model-card:hover { border-color: #6366f1 !important; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(99,102,241,0.1); }
+.model-card.active { box-shadow: 0 0 0 4px rgba(99,102,241,0.15); }
+</style>
+
+<div class="card" style="margin-top:18px;background:linear-gradient(135deg,#dbeafe,#eff6ff);border-color:#93c5fd;">
+    <h2>📚 Free tier limits explained</h2>
+    <div style="font-size:13px;color:#1e40af;line-height:1.8;">
+        <p><strong>RPM</strong> (Requests Per Minute) — concurrent throttle. If exceeded, wait a minute.</p>
+        <p><strong>RPD</strong> (Requests Per Day) — daily quota. Resets at midnight Pacific Time.</p>
+        <p><strong>TPM</strong> (Tokens Per Minute) — input + output total throughput.</p>
+        <p><strong>Today's usage</strong> shown above is tracked from your local logs (this dashboard's calls).</p>
+    </div>
+</div>
+
+<script>
+function getCSRFToken() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+}
+
+document.querySelectorAll('.model-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        card.querySelector('input[type=radio]').checked = true;
+    });
+});
+
+document.getElementById('testBtn').addEventListener('click', async () => {
+    const prompt = document.getElementById('testPrompt').value.trim();
+    const btn = document.getElementById('testBtn');
+    btn.disabled = true; btn.textContent = '⏳ Testing...';
+    document.getElementById('testResult').style.display = 'none';
+    document.getElementById('testError').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('prompt', prompt);
+
+    try {
+        const r = await fetch("{% url 'ai_test' %}", {
+            method: 'POST', body: fd, headers: {'X-CSRFToken': getCSRFToken()}
+        });
+        const d = await r.json();
+        btn.disabled = false; btn.textContent = '⚡ Run Test';
+        if (!d.ok) {
+            document.getElementById('testError').textContent = '❌ ' + d.error;
+            document.getElementById('testError').style.display = 'block';
+            return;
+        }
+        document.getElementById('testOutput').textContent = d.output;
+        const u = d.usage;
+        document.getElementById('testTokens').innerHTML =
+            '🤖 <strong>Model:</strong> ' + u.model +
+            ' &nbsp;|&nbsp; <strong>Prompt:</strong> ' + u.prompt_tokens + ' tokens' +
+            ' &nbsp;|&nbsp; <strong>Output:</strong> ' + u.output_tokens + ' tokens' +
+            ' &nbsp;|&nbsp; <strong>Total:</strong> ' + u.total_tokens + ' tokens';
+        document.getElementById('testResult').style.display = 'block';
+    } catch (e) {
+        btn.disabled = false; btn.textContent = '⚡ Run Test';
+        document.getElementById('testError').textContent = '❌ ' + e.message;
+        document.getElementById('testError').style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends 'scraper/base.html' %}
+{% load extras %}
+{% block heading %}{% if report %}✏️ Edit Report: {{ report.name }}{% else %}+ Build New Report{% endif %}{% endblock %}
+{% block subheading %}Choose entity, dimensions, metrics, and chart type{% endblock %}
+{% block content %}
+
+<a href="{% url 'reports_list' %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">← Back to Reports</a>
+
+<form method="post" style="margin-top:14px;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;">
+        <!-- Left: Config panel -->
+        <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;height:fit-content;position:sticky;top:20px;">
+            <h3 style="margin:0 0 14px;">⚙️ Configure</h3>
+
+            <div class="form-group">
+                <label>Report Name *</label>
+                <input type="text" name="name" value="{{ report.name|default:'' }}" required placeholder="e.g. Conversions by caller this month">
+            </div>
+
+            <div class="form-group">
+                <label>Entity</label>
+                <select name="entity" id="entitySelect" onchange="this.form.action=this.form.action.split('?')[0]+'?entity='+this.value; this.form.method='get'; this.form.submit();">
+                    <option value="calls" {% if entity == 'calls' %}selected{% endif %}>📞 Call Logs</option>
+                    <option value="assignments" {% if entity == 'assignments' %}selected{% endif %}>📋 Lead Assignments</option>
+                    <option value="leads" {% if entity == 'leads' %}selected{% endif %}>🎯 Leads</option>
+                    <option value="attendance" {% if entity == 'attendance' %}selected{% endif %}>🕒 Attendance</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>📐 Group By (Dimensions) — pick 1-2</label>
+                {% for value, name in entity_dims|dictget:entity %}
+                <label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:var(--card-hover);margin-bottom:6px;cursor:pointer;font-weight:500;font-size:13px;">
+                    <input type="checkbox" name="dimensions" value="{{ value }}" {% if value in config.dimensions %}checked{% endif %}> {{ name }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label>📊 Metrics</label>
+                {% for value, name in entity_metrics|dictget:entity %}
+                <label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;background:var(--card-hover);margin-bottom:6px;cursor:pointer;font-weight:500;font-size:13px;">
+                    <input type="checkbox" name="metrics" value="{{ value }}" {% if value in config.metrics %}checked{% endif %}> {{ name }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="form-group">
+                <label>📅 Date Range</label>
+                <select name="preset">
+                    <option value="today" {% if config.filters.preset == 'today' %}selected{% endif %}>Today</option>
+                    <option value="yesterday" {% if config.filters.preset == 'yesterday' %}selected{% endif %}>Yesterday</option>
+                    <option value="last7" {% if config.filters.preset == 'last7' %}selected{% endif %}>Last 7 Days</option>
+                    <option value="last30" {% if config.filters.preset == 'last30' or not config.filters.preset %}selected{% endif %}>Last 30 Days</option>
+                    <option value="month" {% if config.filters.preset == 'month' %}selected{% endif %}>This Month</option>
+                    <option value="custom" {% if config.filters.preset == 'custom' %}selected{% endif %}>Custom</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>📈 Chart Type</label>
+                <select name="chart">
+                    <option value="bar" {% if config.chart == 'bar' %}selected{% endif %}>Bar</option>
+                    <option value="line" {% if config.chart == 'line' %}selected{% endif %}>Line</option>
+                    <option value="pie" {% if config.chart == 'pie' %}selected{% endif %}>Pie</option>
+                    <option value="table" {% if config.chart == 'table' %}selected{% endif %}>Table Only</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" name="is_shared" {% if report.is_shared %}checked{% endif %}>
+                    Share with other admins
+                </label>
+            </div>
+
+            <button type="submit" style="width:100%;padding:12px;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;font-size:14px;">💾 Save & Run</button>
+        </div>
+
+        <!-- Right: Preview -->
+        <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;">
+            <h3 style="margin:0 0 14px;">👀 Live Preview</h3>
+            <div id="previewArea" style="min-height:400px;">
+                <p class="muted" style="text-align:center;padding:60px 20px;">Save the report to see results, or click "Preview" below.</p>
+                <div style="text-align:center;">
+                    <button type="button" onclick="loadPreview()" style="padding:10px 20px;border-radius:8px;background:var(--card-hover);color:var(--text);border:1.5px solid var(--border);font-weight:600;cursor:pointer;font-family:inherit;">🔄 Preview Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+function loadPreview() {
+    const form = document.querySelector('form');
+    const fd = new FormData(form);
+    const params = new URLSearchParams();
+    for (const [k, v] of fd.entries()) {
+        if (v) params.append(k, v);
+    }
+    document.getElementById('previewArea').innerHTML = '<p class="muted" style="text-align:center;padding:60px;">⏳ Loading...</p>';
+    fetch('{% url "report_preview" %}?' + params.toString())
+        .then(r => r.json())
+        .then(d => {
+            if (!d.rows || !d.rows.length) {
+                document.getElementById('previewArea').innerHTML = '<p class="muted" style="text-align:center;padding:60px;">No data for this configuration.</p>';
+                return;
+            }
+            const dims = Array.from(document.querySelectorAll('input[name=dimensions]:checked')).map(c => c.value);
+            const tableRows = d.rows.slice(0, 30).map(r => {
+                const dimCells = dims.map(d => '<td>' + (r.dims[d] ?? '—') + '</td>').join('');
+                const mCells = d.metric_keys.map(k => '<td><strong>' + r.metrics[k] + '</strong></td>').join('');
+                return '<tr>' + dimCells + mCells + '</tr>';
+            }).join('');
+            const dimHeaders = dims.map(d => '<th>' + d + '</th>').join('');
+            const mHeaders = d.metric_keys.map(k => '<th>' + k.replace('m_', '') + '</th>').join('');
+            const totalsRow = '<tr style="background:var(--card-hover);font-weight:800;"><td colspan="' + dims.length + '" style="text-align:right;">Total:</td>' + d.metric_keys.map(k => '<td>' + d.totals[k] + '</td>').join('') + '</tr>';
+            document.getElementById('previewArea').innerHTML = `
+                <div style="margin-bottom:10px;font-size:13px;color:var(--text-muted);">${d.count} row(s) returned</div>
+                <div style="overflow-x:auto;">
+                <table style="margin:0;">
+                    <thead><tr>${dimHeaders}${mHeaders}</tr></thead>
+                    <tbody>${tableRows}${totalsRow}</tbody>
+                </table>
+                </div>`;
+        })
+        .catch(e => {
+            document.getElementById('previewArea').innerHTML = '<p style="color:#ef4444;text-align:center;padding:60px;">Error: ' + e.message + '</p>';
+        });
+}
+</script>
+
+{% endblock %}

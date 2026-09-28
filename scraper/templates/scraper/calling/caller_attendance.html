@@ -1,0 +1,189 @@
+{% extends 'scraper/calling/caller_base.html' %}
+{% load extras %}
+{% block title %}Attendance — {{ month_name }}{% endblock %}
+{% block page_title %}🗓️ My Attendance{% endblock %}
+{% block page_subtitle %}{{ month_name }} · {{ total_days_worked }} day{{ total_days_worked|pluralize }} worked · {{ total_hours_display }} total{% endblock %}
+
+{% block extra_head %}
+<style>
+.cal-wrap {
+    background: white; border-radius: 14px; border: 1.5px solid #e2e8f0;
+    overflow: hidden;
+}
+.cal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; border-bottom: 1px solid #e2e8f0;
+    background: linear-gradient(135deg, #eef2ff, #fdf4ff);
+}
+.cal-head h2 { margin: 0; font-size: 20px; font-weight: 800; }
+.cal-nav-btn {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: white; border: 1.5px solid #e2e8f0; cursor: pointer;
+    display: grid; place-items: center; font-size: 18px; font-weight: 700;
+    color: #475569; text-decoration: none; transition: all .15s;
+}
+.cal-nav-btn:hover { background: #f1f5f9; border-color: #6366f1; color: #6366f1; }
+
+.cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 1px; background: #e2e8f0;
+}
+.cal-head-cell {
+    background: #f8fafc; padding: 12px 8px; text-align: center;
+    font-weight: 700; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; color: #64748b;
+}
+.cal-cell {
+    background: white; min-height: 90px; padding: 8px;
+    position: relative; transition: all .15s;
+}
+.cal-cell.empty { background: #f8fafc; opacity: 0.4; }
+.cal-cell.weekend { background: #fafbfc; }
+.cal-cell.attended { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+.cal-cell.active { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; }
+.cal-cell.today { box-shadow: inset 0 0 0 2.5px #6366f1; }
+.cal-cell.future { color: #cbd5e1; }
+.cal-cell .day-num { font-size: 16px; font-weight: 800; color: #0f172a; }
+.cal-cell.weekend .day-num { color: #94a3b8; }
+.cal-cell.future .day-num { color: #cbd5e1; }
+.cal-cell .att-time { font-size: 11px; color: #166534; font-weight: 700; margin-top: 4px; }
+.cal-cell.active .att-time { color: #92400e; }
+.cal-cell .att-icon { position: absolute; bottom: 6px; right: 8px; font-size: 12px; }
+@media (max-width: 768px) {
+    .cal-cell { min-height: 60px; padding: 4px; }
+    .cal-cell .day-num { font-size: 13px; }
+    .cal-cell .att-time { font-size: 9px; }
+    .cal-head-cell { padding: 8px 2px; font-size: 9px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Today's status card -->
+<div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;padding:20px 24px;margin-bottom:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+    <div style="width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-size:30px;
+        {% if open_break %}background:linear-gradient(135deg,#fef3c7,#fde68a);
+        {% elif today_att and not today_att.check_out %}background:linear-gradient(135deg,#dcfce7,#bbf7d0);
+        {% else %}background:linear-gradient(135deg,#f1f5f9,#e2e8f0);{% endif %}">
+        {% if open_break %}☕{% elif today_att and not today_att.check_out %}🟢{% else %}⚫{% endif %}
+    </div>
+    <div style="flex:1;min-width:200px;">
+        <div style="font-size:12px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">Today's Status</div>
+        <div style="font-size:20px;font-weight:800;margin-top:3px;">
+            {% if open_break %}On Break ({{ open_break.get_reason_display }})
+            {% elif today_att and not today_att.check_out %}On Duty
+            {% elif today_att %}Checked Out
+            {% else %}Not Checked In{% endif %}
+        </div>
+        {% if today_att %}
+        <div style="font-size:13px;color:#64748b;margin-top:2px;">
+            Check-in: <strong>{{ today_att.check_in|date:"h:i A" }}</strong>
+            {% if today_att.check_out %} · Out: <strong>{{ today_att.check_out|date:"h:i A" }}</strong>{% endif %}
+            · Worked today: <strong>{{ today_att.hours_worked_display }}</strong>
+        </div>
+        {% endif %}
+    </div>
+    <div style="display:flex;gap:8px;">
+        {% if today_att and not today_att.check_out %}
+            <form method="post" action="{% url 'caller_attendance_checkout' %}" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit" style="padding:11px 22px;border-radius:10px;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 4px 10px rgba(239,68,68,0.3);">⏹️ Check Out</button>
+            </form>
+        {% else %}
+            <form method="post" action="{% url 'caller_attendance_checkin' %}" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit" style="padding:11px 22px;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 4px 10px rgba(16,185,129,0.3);">▶️ {% if today_att %}Resume{% else %}Check In{% endif %}</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Month summary -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px;">
+    <div class="stat-card">
+        <div class="stat-label">📅 Days Worked</div>
+        <div class="stat-value" style="color:#10b981;">{{ total_days_worked }}</div>
+        <div class="stat-sub">This month</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">⏱️ Total Hours</div>
+        <div class="stat-value" style="color:#6366f1;">{{ total_hours_display }}</div>
+        <div class="stat-sub">All sessions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">📊 Avg / Day</div>
+        <div class="stat-value" style="color:#f59e0b;">
+            {% if total_days_worked %}{% widthratio total_minutes total_days_worked 1 %}m{% else %}—{% endif %}
+        </div>
+        <div class="stat-sub">Minutes per day</div>
+    </div>
+</div>
+
+<!-- Calendar -->
+<div class="cal-wrap">
+    <div class="cal-head">
+        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="cal-nav-btn" title="Previous month">‹</a>
+        <h2>{{ month_name }}</h2>
+        <a href="?year={{ next_year }}&month={{ next_month }}" class="cal-nav-btn" title="Next month">›</a>
+    </div>
+    <div class="cal-grid">
+        <div class="cal-head-cell">Mon</div>
+        <div class="cal-head-cell">Tue</div>
+        <div class="cal-head-cell">Wed</div>
+        <div class="cal-head-cell">Thu</div>
+        <div class="cal-head-cell">Fri</div>
+        <div class="cal-head-cell">Sat</div>
+        <div class="cal-head-cell">Sun</div>
+        {% for week in grid %}
+            {% for cell in week %}
+                <div class="cal-cell
+                    {% if cell.empty %}empty{% endif %}
+                    {% if cell.is_today %}today{% endif %}
+                    {% if cell.is_weekend %}weekend{% endif %}
+                    {% if cell.is_future %}future{% endif %}
+                    {% if cell.attended and cell.is_active %}active
+                    {% elif cell.attended %}attended{% endif %}"
+                    {% if cell.attended %}title="In: {{ cell.check_in|date:'h:i A' }}{% if cell.check_out %} · Out: {{ cell.check_out|date:'h:i A' }}{% endif %} · {{ cell.hours_display }}"{% endif %}>
+                    {% if not cell.empty %}
+                        <div class="day-num">{{ cell.day }}</div>
+                        {% if cell.attended %}
+                            <div class="att-time">{{ cell.hours_display }}</div>
+                            <div class="att-icon">{% if cell.is_active %}🟡{% else %}✓{% endif %}</div>
+                        {% elif cell.is_today %}
+                            <div class="att-time" style="color:#6366f1;">Today</div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+    <div style="padding:14px 24px;background:#fafbfc;border-top:1px solid #e2e8f0;display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:#64748b;">
+        <span><span style="display:inline-block;width:12px;height:12px;background:linear-gradient(135deg,#dcfce7,#bbf7d0);border-radius:3px;vertical-align:-2px;"></span> Attended</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:3px;vertical-align:-2px;"></span> Active session</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:white;border:2.5px solid #6366f1;border-radius:3px;vertical-align:-2px;"></span> Today</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#fafbfc;border:1px solid #e2e8f0;border-radius:3px;vertical-align:-2px;"></span> Weekend / Off</span>
+    </div>
+</div>
+
+<!-- Today's breaks log -->
+{% if today_breaks %}
+<div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;overflow:hidden;margin-top:18px;">
+    <div style="padding:14px 22px;border-bottom:1px solid #e2e8f0;"><h3 style="margin:0;">☕ Today's Breaks</h3></div>
+    <table style="margin:0;">
+        <thead><tr><th>Type</th><th>Started</th><th>Ended</th><th>Duration</th></tr></thead>
+        <tbody>
+            {% for b in today_breaks %}
+            <tr>
+                <td><strong>{{ b.get_reason_display }}</strong></td>
+                <td style="font-size:13px;">{{ b.start|date:"h:i A" }}</td>
+                <td style="font-size:13px;">{% if b.end %}{{ b.end|date:"h:i A" }}{% else %}<span style="color:#f59e0b;">⏳ Active</span>{% endif %}</td>
+                <td><strong>{{ b.duration_minutes }} min</strong></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

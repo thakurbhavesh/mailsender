@@ -1,0 +1,126 @@
+{% extends 'scraper/calling/caller_base.html' %}
+{% block title %}{{ place.name }} — Lead Detail{% endblock %}
+{% block page_title %}🎯 {{ place.name|truncatechars:50 }}{% endblock %}
+{% block page_subtitle %}{{ place.category|default:"Lead" }} · Score {{ place.lead_score }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'caller_dashboard' %}" class="btn btn-secondary btn-sm" style="margin-bottom:14px;">← Back to Dashboard</a>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:start; gap:20px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:280px;">
+            <h1 style="margin-bottom:4px;">{{ place.name }}</h1>
+            <p class="muted">{{ place.category }} · Score: <strong style="color:#6366f1;">{{ place.lead_score }}</strong></p>
+            <p style="margin-top:10px;">📍 {{ place.address|default:"No address" }}</p>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            {% if place.phone %}
+            <a href="tel:{{ place.phone }}" class="btn btn-success" style="font-size:16px; padding:12px 20px;">
+                📞 Call {{ place.phone }}
+            </a>
+            {% endif %}
+            {% if place.phone %}
+            <a href="{{ place.whatsapp_link }}" target="_blank" class="btn" style="background:#25D366;">💬 WhatsApp</a>
+            {% endif %}
+            <button type="button" class="btn" onclick="openCallModal({{ assignment.id }}, '{{ place.name|escapejs }}', '{{ place.phone|escapejs }}')">
+                ✏️ Log Call
+            </button>
+        </div>
+    </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+    <div class="card">
+        <h2>📇 Contact Info</h2>
+        <table>
+            <tr><th style="width:130px;">Phone</th><td>{{ place.phone|default:"—" }}</td></tr>
+            <tr><th>Email</th><td>{{ place.email|default:"—" }}</td></tr>
+            <tr><th>Website</th><td>{% if place.website %}<a href="{{ place.website }}" target="_blank">{{ place.website|truncatechars:40 }}</a>{% else %}—{% endif %}</td></tr>
+            <tr><th>Rating</th><td>{{ place.rating|default:"—" }} ({{ place.reviews_count }} reviews)</td></tr>
+            <tr><th>Status</th><td><span class="badge badge-{{ place.lead_status }}">{{ place.get_lead_status_display }}</span></td></tr>
+            <tr><th>Hours</th><td style="white-space:pre-line; font-size:12px;">{{ place.opening_hours|default:"—"|truncatechars:200 }}</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>📞 Call History ({{ call_logs.count }})</h2>
+        {% if call_logs %}
+            {% for log in call_logs %}
+            <div style="padding:12px; border-left:3px solid #6366f1; background:#f8fafc; margin-bottom:10px; border-radius:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span class="badge badge-{{ log.outcome }}">{{ log.get_outcome_display }}</span>
+                    <span class="muted" style="font-size:12px;">{{ log.created_at|date:"d M Y, h:i A" }}</span>
+                </div>
+                {% if log.notes %}<p style="margin:6px 0 0; font-size:13px;">{{ log.notes|linebreaksbr }}</p>{% endif %}
+                {% if log.callback_at %}<p style="font-size:12px; color:#f59e0b; margin-top:4px;">⏰ Callback: {{ log.callback_at|date:"d M, h:i A" }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="muted">No calls logged yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if place.notes %}
+<div class="card">
+    <h2>📝 Lead Notes</h2>
+    <pre style="white-space:pre-wrap; font-family:inherit; font-size:13px; margin:0;">{{ place.notes }}</pre>
+</div>
+{% endif %}
+
+<!-- Call Modal (same as dashboard) -->
+<div id="callModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:100; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:16px; padding:28px; width:90%; max-width:520px;">
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:18px;">
+            <div>
+                <h2 style="margin:0 0 4px;">📞 Log Call</h2>
+                <p class="muted" style="margin:0;" id="modalLeadName">—</p>
+                <p style="margin:4px 0 0; font-weight:700; color:#10b981;" id="modalLeadPhone">—</p>
+            </div>
+            <button type="button" onclick="closeCallModal()" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">×</button>
+        </div>
+        <form id="callForm" method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Outcome *</label>
+                <select name="outcome" required>
+                    <option value="answered">📞 Answered</option>
+                    <option value="no_answer">📵 No Answer</option>
+                    <option value="busy">⏳ Busy</option>
+                    <option value="wrong_number">❓ Wrong Number</option>
+                    <option value="callback">⏰ Callback Requested</option>
+                    <option value="interested">⭐ Interested</option>
+                    <option value="not_interested">😐 Not Interested</option>
+                    <option value="converted">✅ Converted</option>
+                    <option value="rejected">❌ Rejected</option>
+                </select>
+            </div>
+            <div class="form-group" id="callbackGroup" style="display:none;">
+                <label>Callback Time</label>
+                <input type="datetime-local" name="callback_at">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea name="notes" rows="3"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeCallModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCallModal(assignmentId, leadName, leadPhone) {
+    document.getElementById('modalLeadName').textContent = leadName;
+    document.getElementById('modalLeadPhone').textContent = leadPhone || 'No phone';
+    document.getElementById('callForm').action = '/calling/lead/' + assignmentId + '/update/';
+    document.getElementById('callModal').style.display = 'flex';
+}
+function closeCallModal() { document.getElementById('callModal').style.display = 'none'; }
+document.querySelector('select[name=outcome]').addEventListener('change', function(e){
+    document.getElementById('callbackGroup').style.display = (e.target.value === 'callback') ? 'block' : 'none';
+});
+</script>
+{% endblock %}

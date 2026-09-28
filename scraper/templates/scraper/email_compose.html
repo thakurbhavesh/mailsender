@@ -1,0 +1,86 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}✉️ Compose Email{% endblock %}
+{% block subheading %}{% if place %}To: {{ place.name }} ({{ place.email }}){% else %}New email{% endif %}{% endblock %}
+{% block content %}
+
+{% if place and not place.email %}
+<div class="card" style="background:#fef2f2;">
+    <h2 style="color:#991b1b;">⚠️ This lead has no email</h2>
+    <p>Try enriching the job to fetch emails first.</p>
+</div>
+{% else %}
+<form method="post" action="{% url 'email_send_single' %}" id="sf">
+    {% csrf_token %}
+    <input type="hidden" name="place_id" value="{{ place.id }}">
+
+    <div class="row">
+        <div class="card">
+            <h2>📝 Message</h2>
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:600;font-size:13px;">Pick Template</label>
+                <select name="template_id" id="tpl" required>
+                    <option value="">— Select template —</option>
+                    {% for t in templates %}
+                        <option value="{{ t.id }}" data-subject="{{ t.subject }}" data-body="{{ t.body_html|escape }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:600;font-size:13px;">Subject</label>
+                <input type="text" name="subject" id="subj" placeholder="(uses template subject)">
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:600;font-size:13px;">Body (override template)</label>
+                <textarea name="body_html" id="body" rows="10" style="font-family:monospace;font-size:13px;" placeholder="(leave empty to use template)"></textarea>
+            </div>
+        </div>
+
+        <div>
+            <div class="card" style="margin-bottom:14px;">
+                <h2>📬 Recipient</h2>
+                {% if place %}
+                <p><strong>{{ place.name }}</strong></p>
+                <p style="font-size:14px;color:var(--text-muted);">✉️ {{ place.email }}</p>
+                <p style="font-size:13px;color:var(--text-muted);">{{ place.category }}</p>
+                {% endif %}
+            </div>
+
+            <div class="card" style="margin-bottom:14px;">
+                <h2>From Account</h2>
+                <select name="account_id">
+                    {% for a in accounts %}
+                        <option value="{{ a.id }}" {% if a == default_account %}selected{% endif %}>{{ a.email }}</option>
+                    {% empty %}
+                        <option disabled>No active accounts</option>
+                    {% endfor %}
+                </select>
+                {% if not accounts %}<a href="{% url 'email_account_new' %}" class="btn btn-primary btn-sm" style="margin-top:8px;">+ Add Account</a>{% endif %}
+            </div>
+
+            <div class="card" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;">
+                <button type="submit" class="btn" style="background:white;color:#059669;width:100%;font-size:15px;padding:12px;">📤 Send Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+        <h2>👁️ Live Preview</h2>
+        <div id="prev" style="background:#f8fafc;padding:16px;border-radius:8px;border:1px dashed var(--border);">
+            <p style="color:var(--text-muted);">Select a template to preview...</p>
+        </div>
+    </div>
+</form>
+{% endif %}
+
+<script>
+const tpl = document.getElementById('tpl');
+const prev = document.getElementById('prev');
+tpl && tpl.addEventListener('change', () => {
+    const opt = tpl.options[tpl.selectedIndex];
+    if (!opt.value) { prev.innerHTML = '<p style="color:#64748b;">Select a template...</p>'; return; }
+    const subj = opt.dataset.subject;
+    const body = opt.dataset.body;
+    prev.innerHTML = '<div style="font-size:13px;color:#64748b;margin-bottom:8px;"><strong>Subject:</strong> ' + subj + '</div><hr style="margin:8px 0;"><div>' + body + '</div>';
+});
+</script>
+{% endblock %}

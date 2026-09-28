@@ -1,0 +1,61 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📝 Email Templates{% endblock %}
+{% block subheading %}Reusable templates with personalization{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Templates <span class="h2-count">{{ templates|length }}</span></h2>
+        <div style="display:flex;gap:6px;">
+            <form method="post" action="{% url 'restore_default_templates' %}" onsubmit="return confirm('Refresh the 6 default templates with the latest professional designs? Your custom templates will not be touched.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-secondary">✨ Restore Defaults</button>
+            </form>
+            <a href="{% url 'email_template_new' %}" class="btn btn-primary">+ New Template</a>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;">
+    {% for t in templates %}
+        <div class="card" style="border:1.5px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+                <div>
+                    <h3 style="font-size:15px;font-weight:700;">{{ t.name }}</h3>
+                    {% if t.description %}<p style="font-size:12px;color:var(--text-muted);margin-top:2px;">{{ t.description }}</p>{% endif %}
+                </div>
+                {% if t.is_active %}<span class="badge badge-completed">Active</span>{% else %}<span class="badge badge-failed">Off</span>{% endif %}
+            </div>
+            <div style="background:#f8fafc;padding:10px;border-radius:8px;font-size:13px;margin:10px 0;">
+                <strong>Subject:</strong> {{ t.subject|truncatechars:60 }}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">
+                Used <strong>{{ t.times_used }}</strong> times · Updated {{ t.updated_at|date:'M d' }}
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="{% url 'email_template_preview' t.id %}" class="btn btn-secondary btn-sm">👁️ Preview</a>
+                <a href="{% url 'email_template_edit' t.id %}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                <a href="{% url 'compose_bulk' %}?template={{ t.id }}" class="btn btn-primary btn-sm">Use →</a>
+                <form method="post" action="{% url 'email_template_delete' t.id %}" style="display:inline;margin-left:auto;" onsubmit="return confirm('Delete?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </div>
+        </div>
+    {% empty %}
+        <div class="empty"><div class="empty-icon">📝</div>No templates yet.</div>
+    {% endfor %}
+    </div>
+
+    <div style="margin-top:20px;background:#f8fafc;padding:14px;border-radius:10px;">
+        <strong style="font-size:13px;">💡 Available placeholders:</strong>
+        {% verbatim %}
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{name}}</code>
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{category}}</code>
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{address}}</code>
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{phone}}</code>
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{website}}</code>
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{city}}</code>
+        <code style="font-size:12px;background:white;padding:4px 8px;border-radius:4px;display:inline-block;margin:4px;">{{rating}}</code>
+        {% endverbatim %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🤖 AI Activity Log{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>All AI Generations <span class="h2-count">{{ logs|length }}</span></h2>
+    {% if logs %}
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>Type</th><th>Lead</th><th>Output / Error</th><th>When</th></tr></thead>
+        <tbody>
+        {% for log in logs %}
+        <tr>
+            <td><span class="badge badge-running">{{ log.get_kind_display }}</span></td>
+            <td>{{ log.place.name|default:'—'|truncatechars:30 }}</td>
+            <td style="font-size:12px;{% if log.error %}color:#991b1b;{% endif %}">
+                {% if log.error %}❌ {{ log.error|truncatechars:120 }}
+                {% else %}{{ log.output|truncatechars:140 }}{% endif %}
+            </td>
+            <td style="font-size:12px;color:var(--text-muted);">{{ log.created_at|date:'M d, H:i' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}<div class="empty">No activity yet.</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📧 Email Center{% endblock %}
+{% block subheading %}Send personalized emails via Gmail SMTP{% endblock %}
+{% block content %}
+
+<div class="stats-grid">
+    <div class="stat s2"><span class="icon">✅</span><div class="label">Sent</div><div class="value">{{ total_sent }}</div></div>
+    <div class="stat s6"><span class="icon">⚠️</span><div class="label">Failed</div><div class="value">{{ total_failed }}</div></div>
+    <div class="stat s3"><span class="icon">⏳</span><div class="label">Queued</div><div class="value">{{ total_queued }}</div></div>
+    <div class="stat s1"><span class="icon">✉️</span><div class="label">Leads w/ Email</div><div class="value">{{ leads_with_email }}</div></div>
+</div>
+
+<div class="row-3">
+    <a href="{% url 'email_accounts' %}" class="card" style="text-decoration:none;color:inherit;display:block;">
+        <h2>🔐 Gmail Accounts</h2>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Configure Gmail SMTP using App Password.</p>
+        <div style="font-size:24px;font-weight:800;">{{ accounts.count }}</div>
+        <div style="font-size:12px;color:var(--text-muted);">{{ accounts|length }} configured</div>
+        {% if default_account %}
+            <div style="margin-top:10px;font-size:13px;background:#ecfdf5;color:#065f46;padding:8px;border-radius:8px;">
+                ✓ Active: <strong>{{ default_account.email }}</strong> · {{ default_account.quota_remaining }}/{{ default_account.daily_limit }} left today
+            </div>
+        {% else %}
+            <div style="margin-top:10px;font-size:13px;background:#fef3c7;color:#92400e;padding:8px;border-radius:8px;">
+                ⚠️ No active account — click here to setup
+            </div>
+        {% endif %}
+    </a>
+
+    <a href="{% url 'email_templates' %}" class="card" style="text-decoration:none;color:inherit;display:block;">
+        <h2>📝 Templates</h2>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">Reusable email templates with personalization.</p>
+        <div style="font-size:24px;font-weight:800;">{{ templates.count }}</div>
+        <div style="font-size:12px;color:var(--text-muted);">{% for t in templates|slice:":3" %}{{ t.name }}{% if not forloop.last %} · {% endif %}{% endfor %}</div>
+    </a>
+
+    <a href="{% url 'compose_bulk' %}" class="card" style="text-decoration:none;color:inherit;display:block;background:linear-gradient(135deg, #6366f1, #4f46e5);color:white;border:none;">
+        <h2 style="color:white;">🚀 Compose & Send</h2>
+        <p style="font-size:13px;margin-bottom:14px;opacity:.9;">Send personalized emails to selected leads.</p>
+        <div style="font-size:24px;font-weight:800;">Start →</div>
+        <div style="font-size:12px;opacity:.85;">Bulk or single send</div>
+    </a>
+</div>
+
+<div class="card" style="margin-bottom:24px;">
+    <div class="card-header">
+        <h2>📜 Recent Activity <span class="h2-count">Last 10</span></h2>
+        <a href="{% url 'email_history' %}" class="btn btn-secondary btn-sm">View All →</a>
+    </div>
+    {% if recent_logs %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr><th>To</th><th>Subject</th><th>Template</th><th>Status</th><th>When</th></tr>
+        </thead>
+        <tbody>
+        {% for log in recent_logs %}
+            <tr>
+                <td><strong>{{ log.to_email }}</strong>{% if log.to_name %}<div style="font-size:12px;color:var(--text-muted);">{{ log.to_name }}</div>{% endif %}</td>
+                <td>{{ log.subject|truncatechars:50 }}</td>
+                <td>{{ log.template.name|default:'—' }}</td>
+                <td>
+                    {% if log.status == 'sent' %}<span class="badge badge-completed">✓ Sent</span>
+                    {% elif log.status == 'failed' %}<span class="badge badge-failed" title="{{ log.error_message }}">✗ Failed</span>
+                    {% else %}<span class="badge badge-pending">⏳ Queued</span>{% endif %}
+                </td>
+                <td>{{ log.created_at|date:'M d, H:i' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+        <div class="empty"><div class="empty-icon">📭</div>No emails sent yet.</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>💡 Quick Setup Guide</h2>
+    <ol style="padding-left:20px;line-height:2;color:var(--text-muted);">
+        <li><strong style="color:var(--text);">Generate Gmail App Password:</strong> Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" class="link">myaccount.google.com/apppasswords</a> → create a 16-char password (2FA must be enabled)</li>
+        <li><strong style="color:var(--text);">Add Account:</strong> Click "Gmail Accounts" → "Add Account" → paste App Password</li>
+        <li><strong style="color:var(--text);">Test Connection:</strong> Use the "Test" button to verify SMTP works</li>
+        <li><strong style="color:var(--text);">Pick Template:</strong> Customize one of the default templates or create new</li>
+        <li><strong style="color:var(--text);">Compose & Send:</strong> Click "Compose & Send" to outreach to your leads</li>
+    </ol>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📅 My Meetings{% endblock %}
+{% block subheading %}Booked sessions through your public calendar{% endblock %}
+{% block content %}
+
+{% if not schedule %}
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:60px;text-align:center;">
+    <div style="font-size:64px;margin-bottom:14px;">📅</div>
+    <h2>No Schedule Yet</h2>
+    <p style="color:var(--text-muted);">Set up your booking page first to receive meetings.</p>
+    <a href="{% url 'my_schedule' %}" style="display:inline-block;margin-top:14px;padding:11px 22px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;text-decoration:none;">⚙️ Set Up Schedule</a>
+</div>
+{% else %}
+
+<div style="margin-bottom:18px;">
+    <a href="{% url 'my_schedule' %}" style="padding:8px 16px;border-radius:8px;background:var(--card);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;font-size:13px;">⚙️ Manage Schedule</a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:14px;margin-bottom:20px;">
+    <div style="background:linear-gradient(135deg,#10b981,#059669);color:white;padding:18px;border-radius:14px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;opacity:0.9;">Upcoming</div>
+        <div style="font-size:32px;font-weight:800;margin-top:6px;">{{ upcoming|length }}</div>
+    </div>
+    <div style="background:var(--card);padding:18px;border-radius:14px;border:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:700;">Past 30</div>
+        <div style="font-size:32px;font-weight:800;margin-top:6px;color:#6366f1;">{{ past|length }}</div>
+    </div>
+</div>
+
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:18px;">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);">
+        <h3 style="margin:0;">⏰ Upcoming Meetings</h3>
+    </div>
+    {% if upcoming %}
+    <table style="margin:0;">
+        <thead><tr><th>When</th><th>Booker</th><th>Contact</th><th>Notes</th><th></th></tr></thead>
+        <tbody>
+            {% for m in upcoming %}
+            <tr>
+                <td>
+                    <div style="font-weight:700;">{{ m.scheduled_at|date:'D, d M Y' }}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">{{ m.scheduled_at|date:'h:i A' }} · {{ m.duration_min }} min</div>
+                </td>
+                <td><strong>{{ m.booker_name }}</strong>{% if m.place %}<div style="font-size:11px;color:#16a34a;">✓ Linked: {{ m.place.name|truncatechars:30 }}</div>{% endif %}</td>
+                <td style="font-size:12px;">{{ m.booker_email }}<br>{{ m.booker_phone|default:'' }}</td>
+                <td style="font-size:12px;max-width:260px;">{{ m.notes|truncatechars:120 }}</td>
+                <td>
+                    <form method="post" action="{% url 'meeting_status' m.id %}" style="margin:0;display:inline;">
+                        {% csrf_token %}
+                        <button name="status" value="completed" style="padding:4px 10px;border-radius:5px;background:#dcfce7;color:#065f46;border:none;font-weight:600;cursor:pointer;font-family:inherit;font-size:11px;">✓ Done</button>
+                        <button name="status" value="no_show" style="padding:4px 10px;border-radius:5px;background:#fef3c7;color:#92400e;border:none;font-weight:600;cursor:pointer;font-family:inherit;font-size:11px;">No Show</button>
+                        <button name="status" value="cancelled" style="padding:4px 10px;border-radius:5px;background:#fee2e2;color:#991b1b;border:none;font-weight:600;cursor:pointer;font-family:inherit;font-size:11px;">Cancel</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:40px 20px;">
+        <div class="empty-icon">📭</div>
+        <p>No upcoming meetings. Share your booking link to start receiving requests.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if past %}
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);"><h3 style="margin:0;">📜 Past / Completed</h3></div>
+    <table style="margin:0;">
+        <thead><tr><th>When</th><th>Booker</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for m in past %}
+            <tr>
+                <td style="font-size:12px;">{{ m.scheduled_at|date:'d M, h:i A' }}</td>
+                <td>{{ m.booker_name }} <span style="color:var(--text-muted);font-size:11px;">· {{ m.booker_email }}</span></td>
+                <td>
+                    {% if m.status == 'completed' %}<span class="badge" style="background:#dcfce7;color:#166534;">✓ Done</span>
+                    {% elif m.status == 'cancelled' %}<span class="badge" style="background:#fee2e2;color:#991b1b;">Cancelled</span>
+                    {% elif m.status == 'no_show' %}<span class="badge" style="background:#fef3c7;color:#92400e;">No Show</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

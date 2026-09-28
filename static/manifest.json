@@ -1,0 +1,38 @@
+{
+  "name": "LeadHunt — Lead Generation & Calling",
+  "short_name": "LeadHunt",
+  "description": "Lead generation, calling team management, and conversion tracking platform.",
+  "start_url": "/route/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f0f23",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/static/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/calling/",
+      "icons": [{"src": "/static/icon-192.svg", "sizes": "192x192"}]
+    },
+    {
+      "name": "Add Lead",
+      "url": "/quick-add/",
+      "icons": [{"src": "/static/icon-192.svg", "sizes": "192x192"}]
+    }
+  ]
+}

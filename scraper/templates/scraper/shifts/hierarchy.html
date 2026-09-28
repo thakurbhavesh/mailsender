@@ -1,0 +1,103 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🌳 Team Hierarchy{% endblock %}
+{% block subheading %}Org chart showing reporting structure{% endblock %}
+{% block content %}
+
+{% if is_admin %}
+<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#3730a3;">
+    💡 Click "Edit" on any caller to set their reporting manager. Managers see only their direct team in monitoring views.
+</div>
+{% endif %}
+
+<div style="display:flex;flex-direction:column;gap:24px;">
+{% for block in manager_blocks %}
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#ddd6fe22,#fce7f322);">
+        <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:grid;place-items:center;color:white;font-size:22px;font-weight:800;">{{ block.manager.user.username|first|upper }}</div>
+        <div style="flex:1;">
+            <div style="font-weight:800;font-size:16px;">{{ block.manager.user.get_full_name|default:block.manager.user.username }}</div>
+            <div style="font-size:12px;color:var(--text-muted);font-weight:600;">@{{ block.manager.user.username }} ·
+                {% if block.manager.role == 'admin' %}👑 Admin{% else %}👔 Manager{% endif %}
+            </div>
+        </div>
+        <span class="badge" style="background:#ddd6fe;color:#5b21b6;">{{ block.team|length }} report{{ block.team|length|pluralize }}</span>
+    </div>
+
+    {% if block.team %}
+    <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+        {% for member in block.team %}
+        <div style="padding:14px;background:var(--card-hover);border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#ec4899);display:grid;place-items:center;color:white;font-weight:800;">{{ member.user.username|first|upper }}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;">{{ member.user.get_full_name|default:member.user.username }}</div>
+                <div style="font-size:12px;color:var(--text-muted);">@{{ member.user.username }} · 📞 {{ member.phone|default:"—" }}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Quota: <strong>{{ member.daily_quota }}/day</strong></div>
+            </div>
+            {% if is_admin %}
+            <button type="button" onclick="openManagerPicker({{ member.user.id }}, '{{ member.user.username|escapejs }}')" style="padding:5px 10px;border-radius:6px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:600;border:none;cursor:pointer;font-family:inherit;">Edit</button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:30px;text-align:center;color:var(--text-muted);font-size:13px;">No direct reports yet.</div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if is_admin and unassigned %}
+<div style="background:var(--card);border-radius:14px;border:1.5px dashed var(--border);overflow:hidden;">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);">
+        <h3 style="margin:0;">👤 Unassigned Callers <span style="color:var(--text-muted);font-weight:500;font-size:13px;">({{ unassigned|length }})</span></h3>
+        <p style="margin:4px 0 0;font-size:12px;color:var(--text-muted);">These callers don't report to anyone yet.</p>
+    </div>
+    <div style="padding:18px 22px;display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+        {% for member in unassigned %}
+        <div style="padding:14px;background:var(--card-hover);border-radius:10px;border:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#94a3b8,#64748b);display:grid;place-items:center;color:white;font-weight:800;">{{ member.user.username|first|upper }}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;">{{ member.user.get_full_name|default:member.user.username }}</div>
+                <div style="font-size:12px;color:var(--text-muted);">@{{ member.user.username }}</div>
+            </div>
+            <button type="button" onclick="openManagerPicker({{ member.user.id }}, '{{ member.user.username|escapejs }}')" style="padding:6px 12px;border-radius:6px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:inherit;">+ Assign</button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+</div>
+
+<!-- Manager picker modal -->
+{% if is_admin %}
+<div id="mgrModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:200;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:var(--card);border-radius:14px;padding:24px;width:100%;max-width:440px;">
+        <h3 style="margin:0 0 14px;">Assign Manager for <span id="mgrFor"></span></h3>
+        <form id="mgrForm" method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Reporting Manager</label>
+                <select name="manager_id" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                    <option value="">— No Manager (top-level) —</option>
+                    {% for block in manager_blocks %}
+                    <option value="{{ block.manager.user.id }}">{{ block.manager.user.get_full_name|default:block.manager.user.username }} ({{ block.manager.role|title }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+                <button type="button" onclick="document.getElementById('mgrModal').style.display='none'" style="padding:9px 18px;border-radius:8px;background:var(--card-hover);color:var(--text);border:1.5px solid var(--border);font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>
+                <button type="submit" style="padding:9px 18px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openManagerPicker(uid, uname) {
+    document.getElementById('mgrFor').textContent = '@' + uname;
+    document.getElementById('mgrForm').action = '/admin-panel/team/set-manager/' + uid + '/';
+    document.getElementById('mgrModal').style.display = 'flex';
+}
+</script>
+{% endif %}
+
+{% endblock %}

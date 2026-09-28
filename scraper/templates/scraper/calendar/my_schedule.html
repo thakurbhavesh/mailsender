@@ -1,0 +1,103 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📅 My Booking Page{% endblock %}
+{% block subheading %}Configure your public scheduling page (Calendly-style){% endblock %}
+{% block content %}
+
+{% if schedule %}
+<div style="background:linear-gradient(135deg,#eef2ff,#fdf4ff);border:1.5px solid #c7d2fe;padding:18px 22px;border-radius:12px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:240px;">
+        <div style="font-size:12px;color:#5b21b6;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;">🔗 Your Public Booking URL</div>
+        <code style="display:block;background:white;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:13px;color:#3730a3;border:1px solid #c7d2fe;">{{ public_url }}</code>
+    </div>
+    <button type="button" onclick="navigator.clipboard.writeText('{{ public_url|escapejs }}'); this.textContent='✓ Copied'" style="padding:9px 16px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">📋 Copy Link</button>
+    <a href="{{ public_url }}" target="_blank" style="padding:9px 16px;border-radius:8px;background:white;color:#3730a3;font-weight:700;text-decoration:none;border:1.5px solid #c7d2fe;">👁 Preview</a>
+</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;">
+            <h3 style="margin:0 0 14px;">⚙️ General</h3>
+            <div class="form-group">
+                <label>Page Title *</label>
+                <input type="text" name="title" value="{{ schedule.title|default:'Book a meeting' }}" required>
+            </div>
+            <div class="form-group">
+                <label>Description (shown publicly)</label>
+                <textarea name="description" rows="3">{{ schedule.description|default:'' }}</textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                    <label>Slot Duration (min)</label>
+                    <input type="number" name="slot_duration_min" value="{{ schedule.slot_duration_min|default:30 }}" min="10" max="240">
+                </div>
+                <div class="form-group">
+                    <label>Buffer Between (min)</label>
+                    <input type="number" name="buffer_min" value="{{ schedule.buffer_min|default:10 }}" min="0" max="120">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                    <label>Advance Days (max)</label>
+                    <input type="number" name="advance_days" value="{{ schedule.advance_days|default:14 }}" min="1" max="90">
+                </div>
+                <div class="form-group">
+                    <label>Min Notice (hours)</label>
+                    <input type="number" name="min_notice_hours" value="{{ schedule.min_notice_hours|default:4 }}" min="0" max="168">
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;">
+                <div class="form-group">
+                    <label>Timezone</label>
+                    <select name="timezone_name">
+                        <option value="Asia/Kolkata" {% if schedule.timezone_name == 'Asia/Kolkata' or not schedule %}selected{% endif %}>Asia/Kolkata (IST)</option>
+                        <option value="Asia/Dubai" {% if schedule.timezone_name == 'Asia/Dubai' %}selected{% endif %}>Asia/Dubai</option>
+                        <option value="Europe/London" {% if schedule.timezone_name == 'Europe/London' %}selected{% endif %}>Europe/London</option>
+                        <option value="America/New_York" {% if schedule.timezone_name == 'America/New_York' %}selected{% endif %}>America/New_York</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <input type="color" name="color" value="{{ schedule.color|default:'#6366f1' }}" style="width:100%;height:42px;padding:2px;">
+                </div>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" name="is_active" {% if not schedule or schedule.is_active %}checked{% endif %}>
+                    Active (uncheck to disable public booking)
+                </label>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" name="require_phone" {% if not schedule or schedule.require_phone %}checked{% endif %}>
+                    Require phone number from booker
+                </label>
+            </div>
+        </div>
+
+        <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;">
+            <h3 style="margin:0 0 14px;">🗓 Working Hours</h3>
+            {% for d in days_data %}
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+                <label style="display:flex;align-items:center;gap:8px;min-width:130px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" name="enable_{{ d.code }}" {% if d.enabled %}checked{% endif %} onchange="document.getElementById('hr_{{ d.code }}').style.opacity = this.checked ? 1 : 0.4;">
+                    {{ d.name }}
+                </label>
+                <div id="hr_{{ d.code }}" style="display:flex;gap:8px;align-items:center;flex:1;{% if not d.enabled %}opacity:0.4;{% endif %}">
+                    <input type="time" name="{{ d.code }}_start" value="{{ d.start }}" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-family:inherit;font-size:13px;">
+                    <span style="color:var(--text-muted);">→</span>
+                    <input type="time" name="{{ d.code }}_end" value="{{ d.end }}" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-family:inherit;font-size:13px;">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+        <button type="submit" style="padding:11px 26px;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 6px 14px rgba(16,185,129,0.3);">💾 Save Schedule</button>
+    </div>
+</form>
+
+{% endblock %}

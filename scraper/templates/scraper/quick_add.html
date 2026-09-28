@@ -1,0 +1,51 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}➕ Add Lead Manually{% endblock %}
+{% block subheading %}Quickly add a lead without scraping{% endblock %}
+{% block content %}
+<div class="card" style="max-width:680px;">
+    <form method="post">
+        {% csrf_token %}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div style="grid-column:span 2;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">Business Name *</label>
+                <input type="text" name="name" required placeholder="e.g. Hotel Sunshine Plaza" autofocus>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">📞 Phone</label>
+                <input type="text" name="phone" placeholder="+91 98xxxxxxxx">
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">✉️ Email</label>
+                <input type="email" name="email" placeholder="contact@business.com">
+            </div>
+            <div style="grid-column:span 2;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">🌐 Website</label>
+                <input type="text" name="website" placeholder="https://...">
+            </div>
+            <div style="grid-column:span 2;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">🏷️ Category</label>
+                <input type="text" name="category" placeholder="e.g. Hotel, Restaurant">
+            </div>
+            <div style="grid-column:span 2;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">📍 Address</label>
+                <input type="text" name="address" placeholder="Full address with city, state">
+            </div>
+            <div style="grid-column:span 2;">
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">📝 Notes</label>
+                <textarea name="notes" rows="4" placeholder="Any extra context — referral source, preferences, etc."></textarea>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:18px;">
+            <button type="submit" class="btn btn-primary">💾 Save Lead</button>
+            <a href="{% url 'data_view' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<div class="card" style="margin-top:18px;background:linear-gradient(135deg,#dbeafe,#eff6ff);border-color:#93c5fd;max-width:680px;">
+    <h2>💡 Smart Dedup</h2>
+    <p style="color:#1e40af;font-size:13px;line-height:1.7;">
+        If a lead with the same <strong>name + address + phone</strong> already exists, it will be <strong>updated</strong> with any new info you provide instead of creating a duplicate.
+    </p>
+</div>
+{% endblock %}

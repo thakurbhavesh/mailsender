@@ -1,0 +1,170 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📥 Export Configuration{% endblock %}
+{% block subheading %}Pick filters & columns, then download{% endblock %}
+{% block content %}
+
+<form method="get" id="cfgForm">
+<div class="row">
+    <div class="card">
+        <h2>1️⃣ Filters — choose what to include</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">🔍 Search</label>
+                <input type="text" name="q" value="{{ q }}" placeholder="name, email, phone, address...">
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">📂 Job</label>
+                <select name="job">
+                    <option value="">All Jobs</option>
+                    {% for j in jobs_list %}<option value="{{ j.id }}" {% if j.id|stringformat:'s' == job_id %}selected{% endif %}>#{{ j.id }} {{ j.search_term|truncatechars:30 }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">🏷️ Category</label>
+                <select name="category">
+                    <option value="">All Categories</option>
+                    {% for c in categories %}<option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">🎯 Lead Status</label>
+                <select name="lead_status">
+                    <option value="">All Statuses</option>
+                    {% for v,l in status_choices %}<option value="{{ v }}" {% if v == lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">✉️ Email Filter</label>
+                <select name="has_email">
+                    <option value="">Any</option>
+                    <option value="1" {% if has_email == '1' %}selected{% endif %}>Has Email Only</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">⭐ Min Score</label>
+                <input type="number" name="min_score" value="{{ min_score }}" placeholder="0–100" min="0" max="100">
+            </div>
+        </div>
+        <div>
+            <label style="font-weight:600;font-size:13px;display:block;margin-bottom:6px;">🔢 Limit (leave empty for all)</label>
+            <input type="number" name="limit" value="{{ limit|default:'' }}" placeholder="e.g. 100" min="0" style="max-width:200px;">
+        </div>
+        <button type="submit" class="btn btn-secondary" style="margin-top:14px;">🔄 Update Preview</button>
+    </div>
+
+    <div>
+        <div class="stat s1" style="margin-bottom:14px;">
+            <span class="icon">📊</span>
+            <div class="label">Records to export</div>
+            <div class="value">{{ effective_count }}</div>
+            <div class="delta">
+                {% if limit %}{{ effective_count }} of {{ total }} matched{% else %}{{ total }} matched filter{% endif %}
+            </div>
+        </div>
+        <div class="card" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;">
+            <h2 style="color:white;">⬇️ Download</h2>
+            <p style="font-size:13px;opacity:.9;margin-bottom:14px;">{{ selected_cols|length }} columns × {{ effective_count }} rows</p>
+            <button type="submit" formaction="{% url 'export_excel' %}" class="btn" style="background:white;color:#059669;width:100%;font-size:15px;padding:13px;margin-bottom:8px;">
+                📥 Download Excel (.xlsx)
+            </button>
+            <button type="submit" formaction="{% url 'export_csv' %}" class="btn" style="background:rgba(255,255,255,0.2);color:white;border:1.5px solid rgba(255,255,255,0.4);width:100%;font-size:14px;padding:11px;">
+                📄 Download CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header">
+        <h2>2️⃣ Columns — pick which to include <span class="h2-count">{{ selected_cols|length }} selected</span></h2>
+        <div style="display:flex;gap:6px;">
+            <button type="button" onclick="setCols('all')" class="btn btn-secondary btn-sm">Select All</button>
+            <button type="button" onclick="setCols('default')" class="btn btn-secondary btn-sm">Defaults</button>
+            <button type="button" onclick="setCols('none')" class="btn btn-secondary btn-sm">Clear</button>
+        </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:10px;">
+        {% for key, label, w in available_columns %}
+        <label class="col-pick" style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s;background:white;">
+            <input type="checkbox" name="cols" value="{{ key }}" class="col-cb" data-default="{% if key in default_cols %}1{% else %}0{% endif %}" {% if key in selected_cols %}checked{% endif %}>
+            <span style="font-size:14px;font-weight:500;">{{ label }}</span>
+        </label>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>3️⃣ Preview <span class="h2-count">First 5 rows</span></h2>
+    {% if preview %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                {% for key, label, w in available_columns %}
+                    <th class="col-{{ key }}" {% if key not in selected_cols %}style="display:none;"{% endif %}>{{ label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in preview %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td class="col-name" {% if 'name' not in selected_cols %}style="display:none;"{% endif %}><strong>{{ p.name|default:'—' }}</strong></td>
+                <td class="col-lead_score" {% if 'lead_score' not in selected_cols %}style="display:none;"{% endif %}>{{ p.lead_score }}</td>
+                <td class="col-lead_status" {% if 'lead_status' not in selected_cols %}style="display:none;"{% endif %}>{{ p.get_lead_status_display }}</td>
+                <td class="col-rating" {% if 'rating' not in selected_cols %}style="display:none;"{% endif %}>{{ p.rating|default:'—' }}</td>
+                <td class="col-reviews_count" {% if 'reviews_count' not in selected_cols %}style="display:none;"{% endif %}>{{ p.reviews_count }}</td>
+                <td class="col-category" {% if 'category' not in selected_cols %}style="display:none;"{% endif %}>{{ p.category|default:'—' }}</td>
+                <td class="col-address" {% if 'address' not in selected_cols %}style="display:none;"{% endif %}>{{ p.address|truncatechars:50|default:'—' }}</td>
+                <td class="col-phone" {% if 'phone' not in selected_cols %}style="display:none;"{% endif %}>{{ p.phone|default:'—' }}</td>
+                <td class="col-email" {% if 'email' not in selected_cols %}style="display:none;"{% endif %}>{{ p.email|default:'—' }}</td>
+                <td class="col-website" {% if 'website' not in selected_cols %}style="display:none;"{% endif %}>{{ p.website|truncatechars:30|default:'—' }}</td>
+                <td class="col-facebook" {% if 'facebook' not in selected_cols %}style="display:none;"{% endif %}>{{ p.facebook|truncatechars:24|default:'—' }}</td>
+                <td class="col-instagram" {% if 'instagram' not in selected_cols %}style="display:none;"{% endif %}>{{ p.instagram|truncatechars:24|default:'—' }}</td>
+                <td class="col-linkedin" {% if 'linkedin' not in selected_cols %}style="display:none;"{% endif %}>{{ p.linkedin|truncatechars:24|default:'—' }}</td>
+                <td class="col-notes" {% if 'notes' not in selected_cols %}style="display:none;"{% endif %}>{{ p.notes|truncatechars:30|default:'—' }}</td>
+                <td class="col-source" {% if 'source' not in selected_cols %}style="display:none;"{% endif %}>{{ p.source }}</td>
+                <td class="col-search_term" {% if 'search_term' not in selected_cols %}style="display:none;"{% endif %}>{{ p.job.search_term|truncatechars:24 }}</td>
+                <td class="col-created_at" {% if 'created_at' not in selected_cols %}style="display:none;"{% endif %}>{{ p.created_at|date:'M d, H:i' }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+        <div class="empty"><div class="empty-icon">📭</div>No records match the current filter.</div>
+    {% endif %}
+</div>
+</form>
+
+<style>
+.col-pick:hover { border-color: var(--primary) !important; background: #fafbff !important; }
+.col-pick:has(input:checked) { border-color: var(--primary) !important; background: linear-gradient(135deg,#fafbff,#eef2ff) !important; }
+</style>
+<script>
+const defaults = ['name','lead_score','rating','category','address','phone','email','website'];
+
+function setCols(mode) {
+    document.querySelectorAll('.col-cb').forEach(cb => {
+        if (mode === 'all') cb.checked = true;
+        else if (mode === 'none') cb.checked = false;
+        else if (mode === 'default') cb.checked = defaults.includes(cb.value);
+    });
+    syncPreview();
+}
+
+function syncPreview() {
+    const checked = new Set([...document.querySelectorAll('.col-cb:checked')].map(c => c.value));
+    document.querySelectorAll('[class*="col-"]').forEach(el => {
+        const m = el.className.match(/col-(\w+)/);
+        if (!m || m[1] === 'pick' || m[1] === 'cb') return;
+        if (el.tagName === 'TH' || el.tagName === 'TD') {
+            el.style.display = checked.has(m[1]) ? '' : 'none';
+        }
+    });
+}
+
+document.querySelectorAll('.col-cb').forEach(cb => cb.addEventListener('change', syncPreview));
+</script>
+{% endblock %}

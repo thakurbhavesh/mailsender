@@ -1,0 +1,100 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📞 Calling Team Live Monitor{% endblock %}
+{% block subheading %}Real-time view of who's working — {{ today|date:"l, d M Y" }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+    <div style="display:flex;gap:10px;">
+        <a href="{% url 'members_list' %}" style="padding:9px 16px;border-radius:8px;background:var(--card);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;font-size:13px;">👥 Manage Members</a>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);">
+        🔄 Auto-refresh every 30s · <button onclick="location.reload()" style="background:none;border:none;color:var(--primary);cursor:pointer;font-weight:600;font-family:inherit;font-size:13px;">Refresh now</button>
+    </div>
+</div>
+
+<!-- Top KPIs -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;margin-bottom:22px;">
+    <div style="background:linear-gradient(135deg,#10b981,#059669);color:white;padding:20px;border-radius:14px;box-shadow:0 6px 20px rgba(16,185,129,0.25);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:0.9;">Online Now</div>
+        <div style="font-size:34px;font-weight:800;margin:6px 0;">{{ online_count }} <span style="font-size:18px;opacity:0.85;">/ {{ total_callers }}</span></div>
+        <div style="font-size:12px;opacity:0.85;">Active callers</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;padding:20px;border-radius:14px;box-shadow:0 6px 20px rgba(99,102,241,0.25);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:0.9;">Calls Today</div>
+        <div style="font-size:34px;font-weight:800;margin:6px 0;">{{ total_calls_today }}</div>
+        <div style="font-size:12px;opacity:0.85;">All members combined</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;padding:20px;border-radius:14px;box-shadow:0 6px 20px rgba(245,158,11,0.25);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:0.9;">Conversions</div>
+        <div style="font-size:34px;font-weight:800;margin:6px 0;">{{ total_conversions_today }}</div>
+        <div style="font-size:12px;opacity:0.85;">Today's deals 🎉</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#ec4899,#be185d);color:white;padding:20px;border-radius:14px;box-shadow:0 6px 20px rgba(236,72,153,0.25);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;opacity:0.9;">Team Members</div>
+        <div style="font-size:34px;font-weight:800;margin:6px 0;">{{ total_callers }}</div>
+        <div style="font-size:12px;opacity:0.85;">Active accounts</div>
+    </div>
+</div>
+
+<!-- Live caller table -->
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;font-size:16px;font-weight:700;">🟢 Today's Activity</h2>
+    </div>
+    <table style="margin:0;">
+        <thead>
+            <tr>
+                <th>Caller</th>
+                <th>Status</th>
+                <th>Check-in</th>
+                <th>Hours</th>
+                <th>Assigned</th>
+                <th>Done</th>
+                <th>Pending</th>
+                <th>Calls</th>
+                <th>Interested</th>
+                <th>Converted</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td>
+                    <div style="font-weight:700;">{{ r.profile.user.get_full_name|default:r.profile.user.username }}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">@{{ r.profile.user.username }}</div>
+                </td>
+                <td>
+                    {% if r.online %}
+                        <span class="badge" style="background:#10b981;color:white;animation:pulse 1.5s infinite;">🟢 Online</span>
+                    {% else %}
+                        <span class="badge" style="background:#e2e8f0;color:#475569;">⚫ Offline</span>
+                    {% endif %}
+                </td>
+                <td>{% if r.attendance %}{{ r.attendance.check_in|date:"h:i A" }}{% else %}—{% endif %}</td>
+                <td>{% if r.attendance %}{{ r.attendance.hours_worked_display }}{% else %}—{% endif %}</td>
+                <td><strong>{{ r.assigned }}</strong></td>
+                <td style="color:#10b981;font-weight:700;">{{ r.done }}</td>
+                <td style="color:#f59e0b;font-weight:700;">{{ r.pending }}</td>
+                <td>{{ r.calls }}</td>
+                <td style="color:#be185d;font-weight:700;">{{ r.interested }}</td>
+                <td style="color:#16a34a;font-weight:700;">{{ r.converted }}</td>
+                <td>
+                    <a href="{% url 'admin_caller_detail' r.profile.user.id %}" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:13px;">View →</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="11" class="empty">
+                <div class="empty-icon">👥</div>
+                <p>No active callers. <a href="{% url 'member_add' %}" class="link">Add a caller</a> to get started.</p>
+            </td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+setTimeout(function(){ location.reload(); }, 30000);
+</script>
+
+{% endblock %}

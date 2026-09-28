@@ -1,0 +1,42 @@
+# ── Secrets & live data ──────────────────────────────────
+# db.sqlite3 holds Gmail app passwords, the Gemini API key,
+# user password hashes and 1700+ real leads. Never commit it.
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+.env
+.env.*
+!deploy/.env.example
+*.pem
+*.key
+
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+ENV/
+
+# ── Django ───────────────────────────────────────────────
+*.log
+media/
+staticfiles/
+/static_root/
+local_settings.py
+
+# ── Editors / OS ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Exports the app generates ────────────────────────────
+*.xlsx
+*.csv
+!scraper/fixtures/*.csv

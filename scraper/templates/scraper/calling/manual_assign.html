@@ -1,0 +1,155 @@
+{% extends 'scraper/base.html' %}
+{% load extras %}
+{% block heading %}🎯 Manual Lead Assignment{% endblock %}
+{% block subheading %}Filter leads by area/category, select callers — assign in bulk{% endblock %}
+{% block content %}
+
+<!-- Filters -->
+<form method="get" id="filterForm" style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:18px 22px;margin-bottom:16px;">
+    <h3 style="margin:0 0 14px;">🔍 Filter Leads</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:12px;">
+        <div>
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Search</label>
+            <input type="text" name="q" value="{{ filters.q }}" placeholder="Name, phone, category, address..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+        <div>
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📍 Area / City</label>
+            <input type="text" name="city" value="{{ filters.city }}" placeholder="e.g. Bangalore, Mumbai..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+        <div>
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🏷️ Category</label>
+            <select name="category" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                <option value="">All Categories</option>
+                {% for c in all_categories %}<option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c|truncatechars:36 }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📌 Source</label>
+            <select name="source" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                <option value="">All Sources</option>
+                {% for s in all_sources %}<option value="{{ s }}" {% if filters.source == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Status</label>
+            <select name="lead_status" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                <option value="">Any Status</option>
+                {% for v,l in lead_status_choices %}<option value="{{ v }}" {% if filters.lead_status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">⚡ Min Score</label>
+            <input type="number" name="min_score" value="{{ filters.min_score }}" min="0" max="100" placeholder="0" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:var(--input-bg);color:var(--text);">
+        </div>
+    </div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;align-items:center;">
+        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:600;cursor:pointer;font-size:13px;">
+            <input type="checkbox" name="only_unassigned" value="1" {% if filters.only_unassigned %}checked{% endif %}> Only unassigned leads
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-weight:600;cursor:pointer;font-size:13px;">
+            <input type="checkbox" name="only_with_phone" value="1" {% if filters.only_with_phone %}checked{% endif %}> Only with phone
+        </label>
+        <button type="submit" style="margin-left:auto;padding:10px 22px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">🔍 Apply Filters</button>
+        <a href="?" style="padding:10px 18px;border-radius:8px;background:var(--card-hover);color:var(--text);border:1.5px solid var(--border);font-weight:600;text-decoration:none;font-size:13px;">Reset</a>
+    </div>
+</form>
+
+<!-- Selection summary + caller picker -->
+<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:14px;border:1.5px solid #fcd34d;padding:14px 20px;margin-bottom:16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+    <div style="flex:1;min-width:240px;">
+        <strong>📊 {{ total_filtered }} leads match your filters</strong>
+        <span style="font-size:12px;color:#92400e;margin-left:8px;">· <span id="selCount">0</span> selected</span>
+    </div>
+</div>
+
+<form method="post" action="{% url 'manual_assign_submit' %}" id="assignForm">
+    {% csrf_token %}
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+        <!-- Leads table -->
+        <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+            <div style="padding:14px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="margin:0;">📋 Leads (page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }})</h3>
+                <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <input type="checkbox" id="selectAll" onclick="document.querySelectorAll('input[name=place_ids]').forEach(c => { c.checked = this.checked; }); updateCount();"> Select all on page
+                </label>
+            </div>
+            <div style="overflow-x:auto;max-height:560px;overflow-y:auto;">
+                <table style="margin:0;">
+                    <thead style="position:sticky;top:0;z-index:5;">
+                        <tr><th style="width:40px;"></th><th>Lead</th><th>Phone</th><th>City / Area</th><th>Score</th><th>Source</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in leads_page %}
+                        <tr>
+                            <td><input type="checkbox" name="place_ids" value="{{ p.id }}" onchange="updateCount()"></td>
+                            <td>
+                                <div style="font-weight:700;">{{ p.name|truncatechars:42 }}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">{{ p.category|default:'—'|truncatechars:30 }}</div>
+                            </td>
+                            <td style="font-size:13px;">{{ p.phone|default:'—' }}</td>
+                            <td style="font-size:12px;color:var(--text-muted);max-width:240px;">{{ p.address|truncatechars:50|default:'—' }}</td>
+                            <td><span class="score-pill score-{% if p.lead_score >= 70 %}hi{% elif p.lead_score >= 40 %}md{% else %}lo{% endif %}">{{ p.lead_score }}</span></td>
+                            <td><span class="src-badge src-{{ p.source }}">{{ p.source }}</span></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="empty">No leads match your filters.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="pagination" style="padding:12px;">
+                {% if page_obj.has_previous %}<a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}">← Prev</a>{% endif %}
+                <span class="current">Page {{ page_obj.number }}</span>
+                {% if page_obj.has_next %}<a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}">Next →</a>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Caller picker (sticky) -->
+        <div style="position:sticky;top:20px;height:fit-content;">
+            <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;">
+                <h3 style="margin:0 0 14px;">👤 Assign To</h3>
+                <p class="muted" style="font-size:12px;margin:0 0 12px;">Pick a caller. Their current load shows below.</p>
+
+                <div style="display:flex;flex-direction:column;gap:10px;max-height:480px;overflow-y:auto;">
+                    {% for c in caller_loads %}
+                    <label style="padding:12px;background:var(--card-hover);border-radius:10px;border:1.5px solid var(--border);cursor:pointer;transition:all .15s;display:flex;gap:10px;align-items:center;" onclick="this.style.borderColor='#6366f1';this.style.background='#eef2ff';document.querySelectorAll('label[data-caller-row]').forEach(l => {if(l !== this) {l.style.borderColor='var(--border)';l.style.background='var(--card-hover)';}});" data-caller-row>
+                        <input type="radio" name="caller_id" value="{{ c.profile.user.id }}" required style="margin:0;">
+                        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#ec4899);color:white;display:grid;place-items:center;font-weight:800;flex-shrink:0;">{{ c.profile.user.username|first|upper }}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:700;font-size:13px;">{{ c.profile.user.get_full_name|default:c.profile.user.username }}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">{{ c.profile.role|title }} · Quota {{ c.quota }}</div>
+                            <div style="margin-top:5px;background:#e2e8f0;height:5px;border-radius:3px;overflow:hidden;">
+                                <div style="height:100%;background:{% if c.capacity_pct >= 90 %}#ef4444{% elif c.capacity_pct >= 60 %}#f59e0b{% else %}#10b981{% endif %};width:{{ c.capacity_pct }}%;"></div>
+                            </div>
+                            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-weight:600;">{{ c.pending }}/{{ c.quota }} pending</div>
+                        </div>
+                    </label>
+                    {% empty %}
+                    <p class="empty">No active callers. <a href="{% url 'member_add' %}" class="link">Add one</a>.</p>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" style="width:100%;margin-top:16px;padding:12px;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:800;border:none;cursor:pointer;font-family:inherit;font-size:14px;box-shadow:0 6px 16px rgba(16,185,129,0.3);" id="assignBtn" disabled>
+                    📤 Assign Selected Leads
+                </button>
+
+                <p class="muted" style="font-size:11px;margin:10px 0 0;text-align:center;">⚠️ Already-assigned leads will be skipped</p>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+function updateCount() {
+    const n = document.querySelectorAll('input[name=place_ids]:checked').length;
+    document.getElementById('selCount').textContent = n;
+    const btn = document.getElementById('assignBtn');
+    btn.disabled = n === 0;
+    btn.style.opacity = n === 0 ? '0.5' : '1';
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}Job #{{ job.id }} — {{ job.search_term }}{% endblock %}
+{% block subheading %}{{ job.get_source_display }} · Started {{ job.started_at|date:'M d Y, H:i' }}{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <span class="badge badge-{{ job.status }}" id="jobBadge">{{ job.get_status_display }}</span>
+            <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Results Saved</div>
+                <div style="font-size:24px;font-weight:800;" id="liveCount">{{ job.total_results }}</div>
+            </div>
+            <div>
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Source</div>
+                <div style="font-size:14px;font-weight:600;">{{ job.get_source_display }}</div>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <a href="{% url 'export_config' %}?job={{ job.id }}" class="btn btn-success">📥 Export Wizard</a>
+            <a href="{% url 'jobs' %}" class="btn btn-secondary">← Back to Jobs</a>
+        </div>
+    </div>
+
+    {% if job.status == 'running' %}
+    <div id="live-status" style="margin-top:14px;padding:14px;background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1.5px solid #93c5fd;border-radius:10px;color:#1e40af;font-size:14px;display:flex;align-items:center;gap:10px;">
+        <div class="spinner" style="width:18px;height:18px;border:3px solid #93c5fd;border-top-color:#1e40af;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+        <div>🔄 <strong>Scraping in progress...</strong> Page auto-refreshes every 4s. <span id="liveText">{{ job.total_results }} places saved so far.</span></div>
+    </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+    <script>
+        let lastCount = {{ job.total_results }};
+        async function poll() {
+            try {
+                const r = await fetch("{% url 'job_status' job.id %}");
+                const d = await r.json();
+                document.getElementById('liveCount').textContent = d.places_count;
+                document.getElementById('liveText').textContent = d.places_count + ' places saved so far.';
+                if (d.places_count > lastCount) {
+                    lastCount = d.places_count;
+                    location.reload();
+                }
+                if (d.status === 'completed' || d.status === 'failed') location.reload();
+            } catch (e) {}
+        }
+        setInterval(poll, 4000);
+    </script>
+    {% endif %}
+
+    {% if job.error_message %}
+    <div style="margin-top:14px;padding:14px;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:10px;color:#991b1b;font-size:14px;">
+        ❌ <strong>Error:</strong> {{ job.error_message }}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>📍 Places <span class="h2-count">{{ page.paginator.count }} extracted</span></h2>
+        {% if page.object_list %}
+        <a href="{% url 'data_view' %}?job={{ job.id }}" class="btn btn-secondary btn-sm">Open in Data Explorer →</a>
+        {% endif %}
+    </div>
+    {% if page.object_list %}
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>#</th><th>Name</th><th>Rating</th><th>Category</th><th>Address</th><th>Phone</th><th>Website</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for p in page.object_list %}
+            <tr>
+                <td style="color:var(--text-muted);font-weight:600;">{{ forloop.counter|add:page.start_index|add:'-1' }}</td>
+                <td><strong>{{ p.name|default:'—' }}</strong></td>
+                <td>{% if p.rating %}<span class="star">★</span> {{ p.rating }} <span style="color:#9ca3af;">({{ p.reviews_count }})</span>{% else %}—{% endif %}</td>
+                <td>{{ p.category|default:'—' }}</td>
+                <td class="truncate" title="{{ p.address }}">{{ p.address|default:'—' }}</td>
+                <td>{{ p.phone|default:'—' }}</td>
+                <td>{% if p.website %}<a class="link" href="{{ p.website }}" target="_blank">Visit ↗</a>{% else %}—{% endif %}</td>
+                <td style="white-space:nowrap;">
+                    {% if p.phone %}<a href="{{ p.whatsapp_link }}" target="_blank" class="btn btn-success btn-sm">💬</a>{% endif %}
+                    {% if p.email %}<a href="{% url 'compose' %}?place={{ p.id }}" class="btn btn-primary btn-sm">📧</a>{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Prev</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next →</a>{% endif %}
+    </div>
+    {% else %}
+        <div class="empty">
+            <div class="empty-icon">⏳</div>
+            <h3>{% if job.status == 'running' %}Scrape in progress...{% else %}No places yet{% endif %}</h3>
+            <p>{% if job.status == 'running' %}Records will appear here as they are scraped.{% else %}This job didn't capture any results.{% endif %}</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

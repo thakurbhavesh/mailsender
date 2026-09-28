@@ -1,0 +1,238 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🗂️ Data Explorer{% endblock %}
+{% block subheading %}Browse, filter, bulk-act on all leads{% endblock %}
+{% block content %}
+
+<div class="stats-grid">
+    <div class="stat s1">
+        <span class="icon">🗃️</span>
+        <div class="label">Total in DB</div>
+        <div class="value">{{ total_all }}</div>
+    </div>
+    <div class="stat s2">
+        <span class="icon">🔍</span>
+        <div class="label">Filtered</div>
+        <div class="value">{{ total_filtered }}</div>
+        <div class="delta">Showing {{ page.start_index }}–{{ page.end_index }}</div>
+    </div>
+    <div class="stat s3">
+        <span class="icon">✨</span>
+        <div class="label">Enriched</div>
+        <div class="value">{{ enrich_done }}</div>
+        <div class="delta">{{ enrich_pending }} pending</div>
+    </div>
+    <div class="stat s5">
+        <span class="icon">➕</span>
+        <div class="label">Quick Add</div>
+        <a href="{% url 'quick_add' %}" class="btn" style="background:white;color:#be185d;font-size:13px;padding:8px 14px;margin-top:8px;display:inline-block;">Add Lead Manually</a>
+    </div>
+</div>
+
+{% if enrich_pending > 0 %}
+<div class="card" style="margin-bottom:18px;background:linear-gradient(135deg,#fef3c7,#fffbeb);border-color:#fcd34d;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+            <h2 style="color:#92400e;margin-bottom:4px;">✨ {{ enrich_pending }} leads pending enrichment</h2>
+            <p style="color:#92400e;font-size:13px;">Click below to fetch emails + social links from their websites.</p>
+        </div>
+        <form method="post" action="{% url 'enrich_all' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary">⚡ Enrich All Now</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header"><h2>🔎 Filters</h2></div>
+    <form method="get">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;margin-bottom:10px;">
+            <input type="text" name="q" value="{{ q }}" placeholder="🔍 Search anything..." style="grid-column:span 2;">
+            <select name="job">
+                <option value="">All Jobs</option>
+                {% for j in jobs_list %}<option value="{{ j.id }}" {% if j.id|stringformat:'s' == job_id %}selected{% endif %}>#{{ j.id }} {{ j.search_term|truncatechars:25 }}</option>{% endfor %}
+            </select>
+            <select name="category">
+                <option value="">All Categories</option>
+                {% for c in categories %}<option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+            <select name="lead_status">
+                <option value="">All Statuses</option>
+                {% for v,l in status_choices %}<option value="{{ v }}" {% if v == lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+            <select name="has_email">
+                <option value="">Email: Any</option>
+                <option value="1" {% if has_email == '1' %}selected{% endif %}>Has Email</option>
+            </select>
+            <input type="number" name="min_score" value="{{ min_score }}" placeholder="Min Score">
+            <select name="sort">
+                <option value="-lead_score" {% if sort == '-lead_score' %}selected{% endif %}>Score: High → Low</option>
+                <option value="lead_score" {% if sort == 'lead_score' %}selected{% endif %}>Score: Low → High</option>
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>Name: A → Z</option>
+                <option value="-name" {% if sort == '-name' %}selected{% endif %}>Name: Z → A</option>
+                <option value="-reviews_count" {% if sort == '-reviews_count' %}selected{% endif %}>Most Reviews</option>
+                <option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Newest First</option>
+                <option value="created_at" {% if sort == 'created_at' %}selected{% endif %}>Oldest First</option>
+            </select>
+            <select name="per_page">
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25 / page</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50 / page</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100 / page</option>
+                <option value="200" {% if per_page == 200 %}selected{% endif %}>200 / page</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'data_view' %}" class="btn btn-secondary">Reset</a>
+            <a href="{% url 'export_config' %}?{{ request.GET.urlencode }}" class="btn btn-success">📥 Export Filtered</a>
+        </div>
+    </form>
+</div>
+
+<!-- Bulk Action Toolbar -->
+<form method="post" action="{% url 'bulk_action' %}" id="bulkForm">
+    {% csrf_token %}
+
+    <div id="bulkBar" style="display:none;position:sticky;top:10px;z-index:10;margin-bottom:14px;">
+        <div class="card" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:14px 18px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <strong style="font-size:15px;"><span id="selN">0</span> selected</strong>
+                <a href="#" onclick="clearSel();return false;" style="color:white;font-size:13px;text-decoration:underline;opacity:.85;">Clear</a>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button type="submit" name="action" value="status:contacted" class="btn" style="background:white;color:#4f46e5;padding:8px 14px;font-size:13px;">📞 Mark Contacted</button>
+                <button type="submit" name="action" value="status:interested" class="btn" style="background:white;color:#f59e0b;padding:8px 14px;font-size:13px;">⭐ Interested</button>
+                <button type="submit" name="action" value="status:converted" class="btn" style="background:white;color:#10b981;padding:8px 14px;font-size:13px;">✓ Converted</button>
+                <button type="submit" name="action" value="status:rejected" class="btn" style="background:white;color:#ef4444;padding:8px 14px;font-size:13px;">✗ Rejected</button>
+                <button type="submit" name="action" value="enrich" class="btn" style="background:rgba(255,255,255,0.2);color:white;border:1.5px solid rgba(255,255,255,0.4);padding:8px 14px;font-size:13px;">✨ Enrich</button>
+                <button type="submit" name="action" value="delete" onclick="return confirm('Delete '+document.getElementById('selN').textContent+' leads?');" class="btn" style="background:#ef4444;color:white;padding:8px 14px;font-size:13px;">🗑️ Delete</button>
+            </div>
+        </div>
+    </div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Records <span class="h2-count">{{ total_filtered }} of {{ total_all }}</span></h2>
+        <a href="{% url 'quick_add' %}" class="btn btn-primary btn-sm">+ Add Lead</a>
+    </div>
+    {% if page.object_list %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th style="width:32px;"><input type="checkbox" id="selAll" title="Select all on page"></th>
+                <th>Lead</th><th>Score</th><th>Status</th>
+                <th>Rating</th><th>Contact</th><th>Source</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in page.object_list %}
+            <tr>
+                <td><input type="checkbox" name="ids" value="{{ p.id }}" form="bulkForm" class="rcb"></td>
+                <td>
+                    <a href="{% url 'lead_detail' p.id %}" style="color:inherit;text-decoration:none;">
+                        <strong>{{ p.name|default:'—' }}</strong>
+                    </a>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">{{ p.address|truncatechars:60|default:'—' }}</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">
+                        <span class="src-badge src-{{ p.source }}">{{ p.source }}</span>
+                        · {{ p.category|default:'—'|truncatechars:25 }}
+                        {% if p.times_seen > 1 %}· <span title="seen in multiple scrapes" style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:999px;font-weight:700;">{{ p.times_seen }}×</span>{% endif %}
+                        {% if p.enrichment_status == 'done' %}<span title="enriched" style="color:#059669;">✨</span>
+                        {% elif p.enrichment_status == 'failed' %}<span title="enrichment failed" style="color:#ef4444;">⚠️</span>
+                        {% elif p.enrichment_status == 'pending' and p.website %}<span title="pending enrichment" style="color:#f59e0b;">⏳</span>{% endif %}
+                    </div>
+                </td>
+                <td><span class="score-pill score-{% if p.lead_score >= 70 %}hi{% elif p.lead_score >= 40 %}md{% else %}lo{% endif %}">{{ p.lead_score }}</span></td>
+                <td>
+                    <form method="post" action="{% url 'update_lead' p.id %}" onclick="event.stopPropagation()">
+                        {% csrf_token %}
+                        <select name="lead_status" onchange="this.form.submit()" style="font-size:12px;padding:5px 8px;">
+                            {% for v,l in status_choices %}<option value="{{ v }}" {% if v == p.lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                        </select>
+                    </form>
+                </td>
+                <td>{% if p.rating %}<span class="star">★</span> {{ p.rating }}<div style="font-size:11px;color:#94a3b8;">{{ p.reviews_count }} reviews</div>{% else %}—{% endif %}</td>
+                <td style="font-size:13px;">
+                    {% if p.phone %}<div>📞 {{ p.phone }}</div>{% endif %}
+                    {% if p.email %}<div style="margin-top:2px;color:#059669;">✉️ {{ p.email|truncatechars:24 }}</div>{% endif %}
+                    {% if p.website %}<div style="margin-top:2px;"><a class="link" href="{{ p.website }}" target="_blank">🌐 Site</a></div>{% endif %}
+                </td>
+                <td><span class="src-badge src-{{ p.source }}">{{ p.source }}</span><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">{{ p.created_at|date:'M d' }}</div></td>
+                <td style="white-space:nowrap;">
+                    <div class="actions-row">
+                        <a href="{% url 'lead_detail' p.id %}" class="icon-btn ib-view" title="View Details" aria-label="View Details">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </a>
+                        {% if p.phone %}
+                        <a href="tel:{{ p.phone }}" class="icon-btn ib-call" title="Call {{ p.phone }}" aria-label="Call {{ p.phone }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </a>
+                        <a href="{{ p.whatsapp_link }}" target="_blank" rel="noopener" class="icon-btn ib-whatsapp" title="WhatsApp {{ p.phone }}" aria-label="WhatsApp">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                        </a>
+                        {% else %}
+                        <span class="icon-btn ib-call disabled" title="No phone number" aria-label="No phone number">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        </span>
+                        {% endif %}
+                        {% if p.email %}
+                        <a href="{% url 'compose' %}?place={{ p.id }}" class="icon-btn ib-email" title="Send Email to {{ p.email }}" aria-label="Send Email">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </a>
+                        {% else %}
+                        <span class="icon-btn ib-email disabled" title="No email available" aria-label="No email available">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </span>
+                        {% endif %}
+                        {% if p.website %}
+                        <a href="{{ p.website }}" target="_blank" rel="noopener" class="icon-btn ib-website" title="Visit Website" aria-label="Visit Website">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        </a>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div class="pagination">
+        {% if page.has_previous %}<a href="?page=1&{{ request.GET.urlencode }}">«</a>
+        <a href="?page={{ page.previous_page_number }}&{{ request.GET.urlencode }}">←</a>{% endif %}
+        <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="?page={{ page.next_page_number }}&{{ request.GET.urlencode }}">→</a>
+        <a href="?page={{ page.paginator.num_pages }}&{{ request.GET.urlencode }}">»</a>{% endif %}
+    </div>
+    {% else %}
+        <div class="empty">
+            <div class="empty-icon">🔍</div>
+            <h3>No records match</h3>
+            <p>Try adjusting your filters or <a class="link" href="{% url 'dashboard' %}">start a new scrape</a> · <a class="link" href="{% url 'quick_add' %}">add lead manually</a>.</p>
+        </div>
+    {% endif %}
+</div>
+</form>
+
+<script>
+const selAll = document.getElementById('selAll');
+const cbs = document.querySelectorAll('.rcb');
+const bulkBar = document.getElementById('bulkBar');
+const selN = document.getElementById('selN');
+function update() {
+    const n = document.querySelectorAll('.rcb:checked').length;
+    selN.textContent = n;
+    bulkBar.style.display = n > 0 ? 'block' : 'none';
+}
+function clearSel() {
+    cbs.forEach(c => c.checked = false);
+    selAll.checked = false;
+    update();
+}
+selAll && selAll.addEventListener('change', () => {
+    cbs.forEach(c => c.checked = selAll.checked);
+    update();
+});
+cbs.forEach(c => c.addEventListener('change', update));
+</script>
+{% endblock %}

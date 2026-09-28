@@ -1,0 +1,40 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}WhatsApp Bulk Outreach{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+    <h2>💬 Compose Message</h2>
+    <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">
+        <textarea name="msg" rows="3" style="flex:1;min-width:300px;padding:10px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:14px;">{{ template }}</textarea>
+        <button type="submit" class="btn btn-primary">Update Message</button>
+    </form>
+    <p style="color:#6b7280;font-size:13px;margin-top:10px;">
+        Click any "Send" button to open WhatsApp Web with the message pre-filled. Phone numbers without country code are assumed to be Indian (+91).
+    </p>
+</div>
+
+<div class="card">
+    <h2>Leads with Phone ({{ places|length }})</h2>
+    {% if places %}
+    <table>
+        <thead>
+            <tr><th>#</th><th>Name</th><th>Phone</th><th>Score</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+        {% for p in places %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td><strong>{{ p.name }}</strong><div style="font-size:12px;color:#6b7280;">{{ p.category }}</div></td>
+            <td>{{ p.phone }}</td>
+            <td><span class="score-pill score-{% if p.lead_score >= 70 %}hi{% elif p.lead_score >= 40 %}md{% else %}lo{% endif %}">{{ p.lead_score }}</span></td>
+            <td>
+                <a href="https://wa.me/{{ p.phone|cut:'+'|cut:' '|cut:'-' }}?text={{ template|urlencode }}" target="_blank" class="btn btn-success" style="padding:6px 12px;font-size:13px;">Send</a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty">No leads with phone numbers found. Try filtering or running a scrape.</div>
+    {% endif %}
+</div>
+{% endblock %}

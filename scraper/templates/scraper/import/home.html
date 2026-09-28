@@ -1,0 +1,231 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}📥 Import Leads{% endblock %}
+{% block subheading %}Upload CSV or Excel file from any source — auto-detect, map, dedupe, import.{% endblock %}
+{% block content %}
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;">
+    <!-- Upload card -->
+    <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:24px;">
+        <h2 style="margin:0 0 14px;display:flex;align-items:center;gap:10px;">
+            <svg style="width:22px;height:22px;color:#6366f1;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload File
+        </h2>
+        <form method="post" action="{% url 'import_upload' %}" enctype="multipart/form-data" id="uploadForm">
+            {% csrf_token %}
+            <div id="dropZone" style="border:2.5px dashed #cbd5e1;border-radius:12px;padding:36px;text-align:center;background:var(--card-hover);cursor:pointer;transition:all .15s;">
+                <div style="font-size:48px;margin-bottom:10px;">📊</div>
+                <div style="font-weight:700;margin-bottom:6px;">Drop your CSV / Excel file here</div>
+                <div style="color:var(--text-muted);font-size:13px;margin-bottom:14px;">or click to browse</div>
+                <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" required style="display:none;">
+                <button type="button" onclick="document.getElementById('fileInput').click()" style="padding:10px 22px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;">Choose File</button>
+                <div id="fileName" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:14px;margin-top:14px;align-items:end;">
+                <div>
+                    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Source Label (tag for these leads)</label>
+                    <input type="text" name="source_label" value="upload" placeholder="e.g. linkedin, conference-2025, justdial-export" style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%;font-family:inherit;background:var(--input-bg);color:var(--text);">
+                </div>
+                <button type="submit" id="uploadBtn" disabled style="padding:11px 22px;border-radius:8px;background:linear-gradient(135deg,#10b981,#059669);color:white;font-weight:700;border:none;cursor:pointer;font-family:inherit;opacity:0.5;">
+                    ↗ Upload & Preview
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Helper -->
+    <div style="background:linear-gradient(135deg,#eef2ff,#fdf4ff);border-radius:14px;border:1px solid #c7d2fe;padding:22px;">
+        <h3 style="margin:0 0 12px;color:#5b21b6;">💡 Quick Tips</h3>
+        <ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#475569;">
+            <li>First row should be <strong>column headers</strong></li>
+            <li>System auto-detects columns by name</li>
+            <li>You can map columns manually next</li>
+            <li>Duplicates (by phone/email) are skipped</li>
+            <li>Source label helps you filter later</li>
+        </ul>
+        <a href="{% url 'import_template' %}" style="display:inline-block;margin-top:14px;padding:8px 14px;background:white;color:#5b21b6;border:1.5px solid #c7d2fe;border-radius:8px;font-weight:600;text-decoration:none;font-size:13px;">📄 Download Template CSV</a>
+    </div>
+</div>
+
+<!-- Demo: Column format -->
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f0f9ff,#eff6ff);">
+        <h3 style="margin:0;color:#0c4a6e;">📋 Sample Format — Your CSV/Excel should look like this</h3>
+        <p style="margin:6px 0 0;font-size:13px;color:#0369a1;">Headers can be anything (name, business_name, company, contact, phone_number, etc.) — system auto-detects.</p>
+    </div>
+    <div style="overflow-x:auto;">
+        <table style="margin:0;font-size:12px;">
+            <thead>
+                <tr style="background:#f0f9ff;">
+                    <th>name <span style="color:#10b981;font-size:10px;font-weight:600;">(required)</span></th>
+                    <th>phone</th>
+                    <th>email</th>
+                    <th>website</th>
+                    <th>address</th>
+                    <th>category</th>
+                    <th>rating</th>
+                    <th>notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Sunshine Hotel</strong></td>
+                    <td>9876543210</td>
+                    <td>contact@sunshine.com</td>
+                    <td>https://sunshine.com</td>
+                    <td>MG Road, Bangalore</td>
+                    <td>Hotel</td>
+                    <td>4.5</td>
+                    <td>Met at trade fair</td>
+                </tr>
+                <tr>
+                    <td><strong>Quick Tech Solutions</strong></td>
+                    <td>9988776655</td>
+                    <td>info@quicktech.in</td>
+                    <td>https://quicktech.in</td>
+                    <td>Tech Park, Pune</td>
+                    <td>Software</td>
+                    <td>4.2</td>
+                    <td>Referred by Rajesh</td>
+                </tr>
+                <tr>
+                    <td><strong>City Mart Grocery</strong></td>
+                    <td>+91 8877665544</td>
+                    <td></td>
+                    <td></td>
+                    <td>Sector 5, Noida</td>
+                    <td>Retail</td>
+                    <td>4.0</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div style="padding:14px 22px;background:#fafbfc;border-top:1px solid var(--border);display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);">
+        <span><strong style="color:#10b981;">✓ Required:</strong> Name column (any header that mentions name/business/company)</span>
+        <span><strong style="color:#6366f1;">📞 Recommended:</strong> Phone or Email (for deduplication)</span>
+        <span><strong style="color:#94a3b8;">○ Optional:</strong> All other columns can be empty</span>
+    </div>
+</div>
+
+<!-- Auto-detect cheat sheet -->
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;margin-bottom:20px;">
+    <h3 style="margin:0 0 14px;">🤖 Auto-Detection — How system maps your columns</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;">
+        <div style="background:var(--card-hover);padding:12px 14px;border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">→ Maps to <strong style="color:#6366f1;">name</strong></div>
+            <div style="font-size:13px;">name, business, business_name, company, shop</div>
+        </div>
+        <div style="background:var(--card-hover);padding:12px 14px;border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">→ Maps to <strong style="color:#6366f1;">phone</strong></div>
+            <div style="font-size:13px;">phone, mobile, contact, tel, phone_number</div>
+        </div>
+        <div style="background:var(--card-hover);padding:12px 14px;border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">→ Maps to <strong style="color:#6366f1;">email</strong></div>
+            <div style="font-size:13px;">email, mail, e-mail, email_id</div>
+        </div>
+        <div style="background:var(--card-hover);padding:12px 14px;border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">→ Maps to <strong style="color:#6366f1;">website</strong></div>
+            <div style="font-size:13px;">website, url, web, site</div>
+        </div>
+        <div style="background:var(--card-hover);padding:12px 14px;border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">→ Maps to <strong style="color:#6366f1;">address</strong></div>
+            <div style="font-size:13px;">address, location, addr</div>
+        </div>
+        <div style="background:var(--card-hover);padding:12px 14px;border-radius:8px;border:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">→ Maps to <strong style="color:#6366f1;">category</strong></div>
+            <div style="font-size:13px;">category, type, industry</div>
+        </div>
+    </div>
+    <p style="margin:14px 0 0;font-size:12px;color:var(--text-muted);"><strong>💡 Don't worry</strong> — even if auto-detect misses something, the next page lets you manually map each column.</p>
+</div>
+
+<!-- Import history -->
+<div style="background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+    <div style="padding:16px 22px;border-bottom:1px solid var(--border);">
+        <h2 style="margin:0;">📜 Recent Imports</h2>
+    </div>
+    {% if jobs %}
+    <table style="margin:0;">
+        <thead>
+            <tr><th>File</th><th>Source Tag</th><th>Status</th><th>Total</th><th>Imported</th><th>Duplicates</th><th>Errors</th><th>When</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for j in jobs %}
+            <tr>
+                <td><strong>{{ j.original_filename|truncatechars:40 }}</strong></td>
+                <td><span class="src-badge">{{ j.source_label }}</span></td>
+                <td>
+                    {% if j.status == 'completed' %}<span class="badge badge-completed">✓ {{ j.get_status_display }}</span>
+                    {% elif j.status == 'failed' %}<span class="badge badge-failed">⚠ {{ j.get_status_display }}</span>
+                    {% elif j.status == 'processing' %}<span class="badge badge-running">⏳ {{ j.get_status_display }}</span>
+                    {% elif j.status == 'previewed' %}<span class="badge badge-pending">📋 Awaiting Mapping</span>
+                    {% else %}<span class="badge badge-pending">{{ j.get_status_display }}</span>{% endif %}
+                </td>
+                <td>{{ j.total_rows }}</td>
+                <td style="color:#10b981;font-weight:700;">{{ j.imported }}</td>
+                <td style="color:#f59e0b;">{{ j.duplicates }}</td>
+                <td style="color:#ef4444;">{{ j.errors }}</td>
+                <td style="font-size:12px;color:var(--text-muted);">{{ j.created_at|date:"d M, h:i A" }}</td>
+                <td>
+                    <div style="display:flex;gap:6px;">
+                    {% if j.status == 'pending' or j.status == 'previewed' %}
+                        <a href="{% url 'import_map' j.id %}" style="padding:5px 10px;border-radius:6px;background:#dbeafe;color:#1e40af;font-size:12px;font-weight:600;text-decoration:none;">Continue →</a>
+                    {% endif %}
+                    {% if j.error_log %}
+                        <button type="button" onclick="alert(`{{ j.error_log|escapejs }}`)" style="padding:5px 10px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;">View Errors</button>
+                    {% endif %}
+                    <form method="post" action="{% url 'import_delete' j.id %}" style="margin:0;display:inline;" onsubmit="return confirm('Delete this import record?');">
+                        {% csrf_token %}
+                        <button type="submit" style="padding:5px 10px;border-radius:6px;background:#fee2e2;color:#991b1b;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;">🗑️</button>
+                    </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty" style="padding:50px 20px;">
+        <div class="empty-icon">📂</div>
+        <p>No imports yet. Upload your first file to get started.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const uploadBtn = document.getElementById('uploadBtn');
+const dropZone = document.getElementById('dropZone');
+
+fileInput.addEventListener('change', e => {
+    if (e.target.files.length) {
+        fileName.innerHTML = '✅ <strong>' + e.target.files[0].name + '</strong> (' + Math.round(e.target.files[0].size/1024) + ' KB)';
+        uploadBtn.disabled = false;
+        uploadBtn.style.opacity = '1';
+    }
+});
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#6366f1';
+    dropZone.style.background = '#eef2ff';
+});
+dropZone.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#cbd5e1';
+    dropZone.style.background = 'var(--card-hover)';
+});
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#cbd5e1';
+    dropZone.style.background = 'var(--card-hover)';
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileInput.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+
+{% endblock %}
