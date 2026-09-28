@@ -154,6 +154,7 @@ urlpatterns = [
     # ============ Email Tracking ============
     path('t/o/<str:token>.gif', email_tracking.open_pixel, name='track_open'),
     path('t/c/<str:token>/', email_tracking.click_redirect, name='track_click'),
+    path('u/<str:token>/', email_tracking.unsubscribe, name='unsubscribe'),
     path('email/<int:log_id>/tracking/', email_tracking.tracking_stats, name='tracking_stats'),
 
     # ============ Email Sequences ============

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if ok %}Unsubscribed{% else %}Link not found{% endif %}</title>
+<style>
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:20px;
+         background:#f8fafc; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:#0f172a; }
+  .card { background:#fff; max-width:440px; width:100%; padding:36px 32px; border-radius:16px;
+          box-shadow:0 10px 40px rgba(0,0,0,.08); text-align:center; }
+  .tick { font-size:42px; line-height:1; margin-bottom:14px; }
+  h1 { font-size:21px; margin:0 0 10px; }
+  p { color:#64748b; font-size:14px; line-height:1.6; margin:0; }
+  .mail { font-weight:700; color:#0f172a; word-break:break-all; }
+  @media (max-width:480px) { .card { padding:26px 20px; } }
+</style>
+</head>
+<body>
+<div class="card">
+  {% if ok %}
+    <div class="tick">✅</div>
+    <h1>You are unsubscribed</h1>
+    <p><span class="mail">{{ email }}</span> has been removed. You will not hear from us again.</p>
+  {% else %}
+    <div class="tick">🔗</div>
+    <h1>This link is not valid</h1>
+    <p>It may have expired. If you keep receiving emails, reply to any of them with
+       “unsubscribe” and we will remove you by hand.</p>
+  {% endif %}
+</div>
+</body>
+</html>

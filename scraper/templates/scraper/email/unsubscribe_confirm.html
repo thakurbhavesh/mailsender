@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unsubscribe</title>
+<style>
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:20px;
+         background:#f8fafc; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:#0f172a; }
+  .card { background:#fff; max-width:440px; width:100%; padding:36px 32px; border-radius:16px;
+          box-shadow:0 10px 40px rgba(0,0,0,.08); text-align:center; }
+  h1 { font-size:21px; margin:0 0 10px; }
+  p { color:#64748b; font-size:14px; line-height:1.6; margin:0 0 22px; }
+  .mail { font-weight:700; color:#0f172a; word-break:break-all; }
+  button { background:#dc2626; color:#fff; border:0; padding:13px 26px; border-radius:10px;
+           font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; width:100%; }
+  button:hover { background:#b91c1c; }
+  .note { font-size:12px; color:#94a3b8; margin:16px 0 0; }
+  @media (max-width:480px) { .card { padding:26px 20px; } }
+</style>
+</head>
+<body>
+<div class="card">
+  {% if already %}
+    <h1>You are already unsubscribed</h1>
+    <p><span class="mail">{{ email }}</span> will not receive any more emails from us.</p>
+  {% else %}
+    <h1>Unsubscribe from these emails?</h1>
+    <p>We will stop emailing <span class="mail">{{ email }}</span> straight away, including any
+       sequence already in progress.</p>
+    <form method="post">
+      <button type="submit">Yes, unsubscribe me</button>
+    </form>
+    <p class="note">You can close this page if you clicked by mistake.</p>
+  {% endif %}
+</div>
+</body>
+</html>

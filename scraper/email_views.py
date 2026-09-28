@@ -173,12 +173,7 @@ def send_single(request):
     if template_id:
         template = get_object_or_404(EmailTemplate, id=template_id)
         if custom_subject or custom_body:
-            ad_hoc = EmailTemplate(
-                name=f'(custom) {template.name}',
-                subject=custom_subject or template.subject,
-                body_html=custom_body or template.body_html,
-            )
-            from .email_service import _send_via_smtp
+            from .email_service import deliver
             subject = custom_subject or template.subject
             body = custom_body or template.body_html
             for k, v in {'name': place.name, 'category': place.category,
@@ -187,22 +182,13 @@ def send_single(request):
                           'city': (place.address or '').split(',')[-1].strip()}.items():
                 subject = subject.replace('{{' + k + '}}', str(v or ''))
                 body = body.replace('{{' + k + '}}', str(v or ''))
-            ok, err = _send_via_smtp(account, place.email, place.name, subject, body)
-            from django.utils import timezone
-            EmailLog.objects.create(
-                place=place, template=template, account=account,
-                to_email=place.email, to_name=place.name,
-                subject=subject, body_html=body,
-                status='sent' if ok else 'failed',
-                error_message=err if not ok else '',
-                sent_at=timezone.now() if ok else None,
-            )
-            if ok:
-                account.sent_today += 1
-                account.save(update_fields=['sent_today'])
+            # deliver() handles suppression, tracking, the unsubscribe link,
+            # quota and bounce recording — the same as a template send.
+            log = deliver(account, place, subject, body, template=template)
+            if log and log.status == 'sent':
                 messages.success(request, f'✅ Email sent to {place.email}')
             else:
-                messages.error(request, f'❌ Send failed: {err}')
+                messages.error(request, f'❌ Send failed: {log.error_message if log else "no email address"}')
         else:
             log = send_one(account, place, template)
             if log and log.status == 'sent':

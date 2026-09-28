@@ -8,8 +8,9 @@ from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
 
-from .models import EmailLog
+from .models import EmailLog, Suppression
 from .calling_utils import admin_required
 
 
@@ -103,3 +104,38 @@ def tracking_stats(request, log_id):
     """View detailed tracking stats for one email."""
     log = get_object_or_404(EmailLog, id=log_id)
     return render(request, 'scraper/email/tracking_stats.html', {'log': log})
+
+
+@csrf_exempt
+def unsubscribe(request, token):
+    """Opt-out landing page, and the one-click target for mail clients.
+
+    RFC 8058 one-click arrives as a POST with no user present, so that path
+    must act immediately and never show a confirmation.
+    """
+    log = EmailLog.objects.filter(open_token=token).first()
+    if not log:
+        return render(request, 'scraper/email/unsubscribed.html',
+                      {'ok': False, 'email': ''}, status=404)
+
+    if request.method == 'POST':
+        Suppression.add(log.to_email, reason='unsubscribed',
+                        place=log.place, note='One-click from email')
+        if not log.unsubscribed_at:
+            log.unsubscribed_at = timezone.now()
+            log.save(update_fields=['unsubscribed_at'])
+
+        # Stop any drip that is mid-flight for this lead.
+        if log.place_id:
+            from .models import SequenceEnrollment
+            SequenceEnrollment.objects.filter(
+                place_id=log.place_id, status='active'
+            ).update(status='stopped', stop_reason='Unsubscribed')
+
+        return render(request, 'scraper/email/unsubscribed.html',
+                      {'ok': True, 'email': log.to_email})
+
+    # GET — a person clicked the footer link, so confirm first.
+    already = Suppression.blocks(log.to_email)
+    return render(request, 'scraper/email/unsubscribe_confirm.html',
+                  {'log': log, 'email': log.to_email, 'already': already})

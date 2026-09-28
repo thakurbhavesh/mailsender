@@ -11,6 +11,7 @@ PUBLIC_PATH_PREFIXES = (
     '/favicon',
     '/t/o/',         # email open tracking pixel
     '/t/c/',         # email click tracking redirect
+    '/u/',           # unsubscribe — the recipient is never logged in
     '/meet/',        # public booking pages
     '/api/sync/',    # local→prod sync (token-authed)
 )

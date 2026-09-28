@@ -269,6 +269,13 @@ class EmailLog(models.Model):
                               help_text='List of {url, at} per click')
     user_agent = models.CharField(max_length=300, blank=True, default='')
 
+    # Delivery failures the SMTP server reported outright, as opposed to a
+    # send that left but was rejected later.
+    bounced = models.BooleanField(default=False)
+    bounce_reason = models.CharField(max_length=300, blank=True, default='')
+    bounced_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+
     # Sequence linkage
     sequence_enrollment = models.ForeignKey(
         'SequenceEnrollment', on_delete=models.SET_NULL,
@@ -277,6 +284,11 @@ class EmailLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['place', 'status']),
+            models.Index(fields=['status', 'sent_at']),
+            models.Index(fields=['to_email']),
+        ]
 
     def __str__(self):
         return f"{self.to_email} - {self.subject[:30]}"
@@ -287,6 +299,49 @@ class EmailLog(models.Model):
             self.open_token = secrets.token_urlsafe(24)
             self.save(update_fields=['open_token'])
         return self.open_token
+
+
+class Suppression(models.Model):
+    """Addresses that must never be emailed again.
+
+    Keyed on the address rather than the lead, so the same person is still
+    covered when they appear under a second scraped business.
+    """
+    REASON_CHOICES = [
+        ('unsubscribed', 'Unsubscribed'),
+        ('bounced', 'Hard bounce'),
+        ('complained', 'Marked as spam'),
+        ('manual', 'Added by hand'),
+    ]
+
+    email = models.EmailField(unique=True, db_index=True)
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES, default='unsubscribed')
+    note = models.CharField(max_length=300, blank=True, default='')
+    place = models.ForeignKey(Place, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name='suppressions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.email} ({self.reason})"
+
+    @classmethod
+    def blocks(cls, email):
+        if not email:
+            return False
+        return cls.objects.filter(email__iexact=email.strip()).exists()
+
+    @classmethod
+    def add(cls, email, reason='unsubscribed', place=None, note=''):
+        if not email:
+            return None
+        obj, _ = cls.objects.get_or_create(
+            email=email.strip().lower(),
+            defaults={'reason': reason, 'place': place, 'note': note[:300]},
+        )
+        return obj
 
 
 # ============================================================

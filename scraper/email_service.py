@@ -7,17 +7,29 @@ from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 from django.utils import timezone
 
-from .models import EmailAccount, EmailTemplate, EmailLog, Place
+from .models import EmailAccount, EmailTemplate, EmailLog, Place, Suppression
 
 
-def _send_via_smtp(account, to_email, to_name, subject, body_html):
-    """Low-level SMTP send. Returns (success, error_message)."""
+def _send_via_smtp(account, to_email, to_name, subject, body_html, unsub_url=''):
+    """Low-level SMTP send.
+
+    Returns (success, error_message, hard_bounce). hard_bounce is True when
+    the server refused the recipient outright, which means the address is
+    dead and should not be tried again.
+    """
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
         from_display = account.sender_name or account.email.split('@')[0].title()
         msg['From'] = formataddr((from_display, account.email))
         msg['To'] = formataddr((to_name, to_email)) if to_name else to_email
+
+        # Gmail and Yahoo require these on bulk mail (RFC 8058). Without them
+        # cold sends land in spam regardless of content.
+        if unsub_url:
+            msg['List-Unsubscribe'] = f'<{unsub_url}>'
+            msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
 
         if account.use_tls:
@@ -29,11 +41,16 @@ def _send_via_smtp(account, to_email, to_name, subject, body_html):
         server.login(account.email, account.app_password)
         server.sendmail(account.email, [to_email], msg.as_string())
         server.quit()
-        return True, ''
+        return True, '', False
     except smtplib.SMTPAuthenticationError as e:
-        return False, f"Auth failed: Use Gmail App Password (16 chars). {e}"
+        return False, f"Auth failed: Use Gmail App Password (16 chars). {e}", False
+    except (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused) as e:
+        return False, str(e)[:300], True
+    except smtplib.SMTPResponseException as e:
+        # 5xx is permanent; 4xx is worth retrying later.
+        return False, f"{e.smtp_code} {e.smtp_error}"[:300], 500 <= e.smtp_code < 600
     except Exception as e:
-        return False, str(e)[:500]
+        return False, str(e)[:500], False
 
 
 def _get_base_url():
@@ -42,21 +59,54 @@ def _get_base_url():
     return os.environ.get('TRACKING_BASE_URL', '').rstrip('/') or 'http://127.0.0.1:8000'
 
 
-def send_one(account, place, template, enrollment=None):
-    """Send one email to a place using a template; create EmailLog with tracking."""
+UNSUB_FOOTER = (
+    '<div style="margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;'
+    'font-size:11px;color:#94a3b8;text-align:center;font-family:Arial,sans-serif;">'
+    'Not interested in these emails? '
+    '<a href="{url}" style="color:#94a3b8;text-decoration:underline;">Unsubscribe</a>'
+    '</div>'
+)
+
+
+def append_unsub_footer(html, unsub_url):
+    """Add a visible opt-out link; the header alone is not enough for humans."""
+    if not unsub_url or '/u/' in html:
+        return html
+    return html + UNSUB_FOOTER.format(url=unsub_url)
+
+
+def _unsub_url(log):
+    return f"{_get_base_url()}/u/{log.ensure_token()}/"
+
+
+def deliver(account, place, subject, body, template=None, enrollment=None):
+    """Send one message to a lead and record it.
+
+    Both the template path and the hand-edited path go through here, so
+    suppression, tracking, the unsubscribe link and bounce handling apply
+    the same way to each.
+    """
     if not place.email:
         return None
+
     account.reset_quota_if_needed()
     if account.quota_remaining <= 0:
-        log = EmailLog.objects.create(
+        return EmailLog.objects.create(
             place=place, template=template, account=account,
             to_email=place.email, to_name=place.name,
             subject='', body_html='', status='failed',
             error_message='Daily quota exhausted',
         )
-        return log
 
-    subject, body = template.render(place)
+    # Never mail an address that unsubscribed, bounced or complained.
+    if Suppression.blocks(place.email):
+        return EmailLog.objects.create(
+            place=place, template=template, account=account,
+            to_email=place.email, to_name=place.name,
+            subject='', body_html='', status='failed',
+            error_message='Suppressed: unsubscribed or bounced',
+        )
+
     log = EmailLog.objects.create(
         place=place, template=template, account=account,
         to_email=place.email, to_name=place.name,
@@ -64,26 +114,45 @@ def send_one(account, place, template, enrollment=None):
         sequence_enrollment=enrollment,
     )
 
-    # Inject tracking pixel + click rewriting
     from .email_tracking import inject_tracking
+    unsub = _unsub_url(log)
     try:
         tracked_body = inject_tracking(body, log, base_url=_get_base_url())
     except Exception:
         tracked_body = body
+    tracked_body = append_unsub_footer(tracked_body, unsub)
 
-    ok, err = _send_via_smtp(account, place.email, place.name, subject, tracked_body)
+    ok, err, hard_bounce = _send_via_smtp(
+        account, place.email, place.name, subject, tracked_body, unsub_url=unsub)
+
     if ok:
         log.status = 'sent'
         log.sent_at = timezone.now()
         account.sent_today += 1
         account.save(update_fields=['sent_today'])
-        template.times_used += 1
-        template.save(update_fields=['times_used'])
+        if template and template.pk:
+            template.times_used += 1
+            template.save(update_fields=['times_used'])
     else:
         log.status = 'failed'
         log.error_message = err
+        if hard_bounce:
+            log.bounced = True
+            log.bounce_reason = err[:300]
+            log.bounced_at = timezone.now()
+            # A dead address stays dead — stop wasting sends on it.
+            Suppression.add(place.email, reason='bounced', place=place, note=err)
     log.save()
     return log
+
+
+def send_one(account, place, template, enrollment=None):
+    """Send a template to a lead."""
+    if not place.email:
+        return None
+    subject, body = template.render(place)
+    return deliver(account, place, subject, body,
+                   template=template, enrollment=enrollment)
 
 
 def send_test_email(account, recipient_email):
@@ -97,7 +166,7 @@ def send_test_email(account, recipient_email):
         <strong>Sent at:</strong> {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         <hr><p style="color:#64748b;font-size:12px;">If you received this, your Gmail App Password is configured correctly.</p>
     </div>"""
-    ok, err = _send_via_smtp(account, recipient_email, '', subject, body)
+    ok, err, _ = _send_via_smtp(account, recipient_email, '', subject, body)
     EmailLog.objects.create(
         account=account, to_email=recipient_email,
         subject=subject, body_html=body,
