@@ -57,6 +57,10 @@ class Place(models.Model):
     linkedin = models.URLField(max_length=500, blank=True, default='')
     lead_status = models.CharField(max_length=20, choices=LEAD_STATUS_CHOICES, default='new')
     notes = models.TextField(blank=True, default='')
+    # What has to happen next, and when. Without this there is no answer to
+    # "which leads do I work today?" — only "which did I touch last".
+    next_follow_up = models.DateTimeField(null=True, blank=True, db_index=True)
+    follow_up_note = models.CharField(max_length=300, blank=True, default='')
     lead_score = models.IntegerField(default=0)
     enriched = models.BooleanField(default=False)
     source = models.CharField(max_length=30, default='google_maps')
@@ -120,6 +124,19 @@ class Place(models.Model):
         elif self.reviews_count > 10:
             score += 5
         return min(score, 100)
+
+    @property
+    def follow_up_state(self):
+        """'overdue', 'today', 'upcoming' or '' — drives the queue badges."""
+        if not self.next_follow_up:
+            return ''
+        from django.utils import timezone
+        now = timezone.now()
+        if self.next_follow_up < now:
+            return 'overdue'
+        if timezone.localtime(self.next_follow_up).date() == timezone.localdate():
+            return 'today'
+        return 'upcoming'
 
     def whatsapp_link(self, message=''):
         if not self.phone:

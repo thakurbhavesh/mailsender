@@ -1,7 +1,7 @@
 """Tests for the parts that quietly cost money or reputation when they break:
 lead engagement rollups, suppression, and the unsubscribe flow.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -254,3 +254,104 @@ class DashboardAggregateTests(TestCase):
             self.client.get('/')
         self.assertLess(len(captured), 25,
                         'dashboard query count regressed to %d' % len(captured))
+
+
+class FollowUpTests(TestCase):
+    """Follow-up dates decide what shows in the daily queue, and the day
+    boundary must be the local one — Asia/Kolkata is 5.5 hours off UTC."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser('mgr', 'm@example.com', 'x')
+        self.client.force_login(self.admin)
+        self.lead = make_place('Follow Co', 'f@example.com', unique_key='fc')
+
+    def test_preset_sets_a_future_date(self):
+        self.client.post('/leads/%d/follow-up/' % self.lead.pk,
+                         {'preset': '3d', 'note': 'Demo call'})
+        self.lead.refresh_from_db()
+        self.assertIsNotNone(self.lead.next_follow_up)
+        self.assertEqual(self.lead.follow_up_note, 'Demo call')
+        self.assertEqual(self.lead.follow_up_state, 'upcoming')
+
+    def test_clear_removes_it(self):
+        self.lead.next_follow_up = timezone.now() + timedelta(days=1)
+        self.lead.save()
+        self.client.post('/leads/%d/follow-up/' % self.lead.pk, {'clear': '1'})
+        self.lead.refresh_from_db()
+        self.assertIsNone(self.lead.next_follow_up)
+
+    def test_state_reflects_the_clock(self):
+        """Pinned to a fixed moment; otherwise the result depends on what
+        time the suite happens to run."""
+        tz = timezone.get_current_timezone()
+        noon = datetime(2026, 6, 15, 12, 0, tzinfo=tz)
+
+        with patch('django.utils.timezone.now', return_value=noon):
+            self.lead.next_follow_up = noon - timedelta(hours=3)
+            self.assertEqual(self.lead.follow_up_state, 'overdue')
+
+            self.lead.next_follow_up = noon + timedelta(hours=6)   # same local day
+            self.assertEqual(self.lead.follow_up_state, 'today')
+
+            self.lead.next_follow_up = noon + timedelta(days=5)
+            self.assertEqual(self.lead.follow_up_state, 'upcoming')
+
+    def test_today_filter_uses_the_local_day(self):
+        """23:30 local is still today, even though in UTC it is tomorrow."""
+        tz = timezone.get_current_timezone()
+        late_today = datetime(2026, 6, 15, 23, 30, tzinfo=tz)
+        self.lead.next_follow_up = late_today
+        self.lead.save()
+
+        with patch('django.utils.timezone.now',
+                   return_value=datetime(2026, 6, 15, 9, 0, tzinfo=tz)):
+            due = _apply_work_filter(_annotate_engagement(Place.objects.all()), 'today')
+            self.assertIn(self.lead.pk, [p.pk for p in due])
+
+    def test_due_covers_overdue_and_today(self):
+        overdue = make_place('Overdue Co', 'o2@example.com', unique_key='oc')
+        overdue.next_follow_up = timezone.now() - timedelta(days=1)
+        overdue.save()
+        self.lead.next_follow_up = timezone.now() + timedelta(days=10)
+        self.lead.save()
+        names = set(_apply_work_filter(
+            _annotate_engagement(Place.objects.all()), 'due'
+        ).values_list('name', flat=True))
+        self.assertIn('Overdue Co', names)
+        self.assertNotIn('Follow Co', names)
+
+
+class BulkActionTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser('boss2', 'b2@example.com', 'x')
+        self.client.force_login(self.admin)
+        self.a = make_place('Alpha', 'alpha@example.com', unique_key='al')
+        self.b = make_place('Beta', 'beta@example.com', unique_key='be')
+
+    def test_bulk_status(self):
+        self.client.post('/leads/bulk/',
+                         {'ids': [self.a.pk, self.b.pk], 'action': 'status:interested'})
+        self.a.refresh_from_db(); self.b.refresh_from_db()
+        self.assertEqual(self.a.lead_status, 'interested')
+        self.assertEqual(self.b.lead_status, 'interested')
+
+    def test_bulk_follow_up_and_clear(self):
+        self.client.post('/leads/bulk/', {'ids': [self.a.pk], 'action': 'followup:1w'})
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.follow_up_state, 'upcoming')
+        self.client.post('/leads/bulk/', {'ids': [self.a.pk], 'action': 'clear_followup'})
+        self.a.refresh_from_db()
+        self.assertIsNone(self.a.next_follow_up)
+
+    def test_bulk_suppress_also_stops_sequences(self):
+        seq = EmailSequence.objects.create(name='Drip')
+        enr = SequenceEnrollment.objects.create(
+            sequence=seq, place=self.a, status='active', next_send_at=timezone.now())
+        self.client.post('/leads/bulk/', {'ids': [self.a.pk], 'action': 'suppress'})
+        enr.refresh_from_db()
+        self.assertTrue(Suppression.blocks(self.a.email))
+        self.assertEqual(enr.status, 'stopped')
+
+    def test_no_selection_is_rejected(self):
+        r = self.client.post('/leads/bulk/', {'action': 'status:interested'}, follow=True)
+        self.assertContains(r, 'select')

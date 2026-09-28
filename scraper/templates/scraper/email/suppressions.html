@@ -1,0 +1,98 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}🚫 Suppression List{% endblock %}
+{% block subheading %}Ye addresses kabhi mail nahi payenge{% endblock %}
+{% block content %}
+
+<div class="stats-grid">
+    <div class="stat s1"><span class="icon">🚫</span>
+        <div class="label">Total blocked</div><div class="value">{{ total }}</div></div>
+    <div class="stat s2"><span class="icon">✋</span>
+        <div class="label">Unsubscribed</div><div class="value">{{ counts.unsubscribed|default:0 }}</div>
+        <div class="delta">khud opt-out kiya</div></div>
+    <div class="stat s3"><span class="icon">📮</span>
+        <div class="label">Hard bounce</div><div class="value">{{ counts.bounced|default:0 }}</div>
+        <div class="delta">address exist nahi karta</div></div>
+    <div class="stat s5"><span class="icon">✍️</span>
+        <div class="label">Manually added</div><div class="value">{{ counts.manual|default:0 }}</div></div>
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header"><h2>➕ Address add karein</h2></div>
+    <form method="post" action="{% url 'suppression_add' %}"
+          style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        {% csrf_token %}
+        <input type="email" name="email" placeholder="someone@example.com" required
+               style="flex:1;min-width:200px;">
+        <input type="text" name="note" placeholder="Reason (optional)" maxlength="300"
+               style="flex:1;min-width:160px;">
+        <button type="submit" class="btn btn-danger">🚫 Block</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Blocked addresses <span class="h2-count">{{ total }}</span></h2>
+        <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input type="text" name="q" value="{{ q }}" placeholder="🔍 Email search"
+                   style="font-size:13px;padding:6px 10px;">
+            <select name="reason" style="font-size:13px;padding:6px 10px;">
+                <option value="">Sab reasons</option>
+                {% for v,l in reason_choices %}
+                    <option value="{{ v }}" {% if v == reason %}selected{% endif %}>{{ l }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        </form>
+    </div>
+
+    <div class="table-scroll">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:10px 8px;border-bottom:2px solid var(--border);">Email</th>
+                <th style="text-align:left;padding:10px 8px;border-bottom:2px solid var(--border);">Reason</th>
+                <th style="text-align:left;padding:10px 8px;border-bottom:2px solid var(--border);">Lead</th>
+                <th style="text-align:left;padding:10px 8px;border-bottom:2px solid var(--border);">Kab</th>
+                <th style="border-bottom:2px solid var(--border);"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for s in page %}
+            <tr>
+                <td style="padding:9px 8px;border-bottom:1px solid var(--border);font-weight:600;">{{ s.email }}</td>
+                <td style="padding:9px 8px;border-bottom:1px solid var(--border);">
+                    <span class="badge badge-{% if s.reason == 'bounced' %}failed{% elif s.reason == 'unsubscribed' %}pending{% else %}completed{% endif %}">
+                        {{ s.get_reason_display }}</span>
+                    {% if s.note %}<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">{{ s.note|truncatechars:60 }}</div>{% endif %}
+                </td>
+                <td style="padding:9px 8px;border-bottom:1px solid var(--border);">
+                    {% if s.place %}<a href="{% url 'lead_activity' s.place.id %}" class="link">{{ s.place.name|truncatechars:26 }}</a>
+                    {% else %}<span style="color:#cbd5e1;">—</span>{% endif %}
+                </td>
+                <td style="padding:9px 8px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);white-space:nowrap;">
+                    {{ s.created_at|date:'d M Y, H:i' }}</td>
+                <td style="padding:9px 8px;border-bottom:1px solid var(--border);text-align:right;">
+                    <form method="post" action="{% url 'suppression_remove' s.id %}" style="margin:0;"
+                          onsubmit="return confirm('{{ s.email }} ko list se hatayein? Iske baad mail ja sakega.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary btn-sm">Unblock</button>
+                    </form>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="5" style="text-align:center;padding:36px;color:var(--text-muted);">
+                Abhi koi address blocked nahi hai.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% if page.has_other_pages %}
+    <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:16px;">
+        {% if page.has_previous %}<a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page.previous_page_number }}">← Prev</a>{% endif %}
+        <span style="font-size:13px;color:var(--text-muted);">Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page.next_page_number }}">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

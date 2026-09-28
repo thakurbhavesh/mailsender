@@ -38,6 +38,9 @@
 .pill-opened { background:#dcfce7; color:#15803d; }
 .pill-unopened { background:#fef3c7; color:#92400e; }
 .pill-failed { background:#fee2e2; color:#b91c1c; }
+.pill-overdue  { background:#fee2e2; color:#b91c1c; }
+.pill-today    { background:#fef3c7; color:#92400e; }
+.pill-upcoming { background:#e0e7ff; color:#3730a3; }
 
 .la-split { display:grid; grid-template-columns:1.1fr 1fr; gap:18px; align-items:start; }
 @media (max-width: 1000px) { .la-split { grid-template-columns:1fr; } }
@@ -58,6 +61,42 @@
     {% if summary.is_untouched %}
         <span class="pill pill-unopened">🆕 Is lead pe abhi tak koi kaam nahi hua</span>
     {% endif %}
+</div>
+
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-header"><h2>⏰ Next follow-up</h2></div>
+    {% if place.next_follow_up %}
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+            {% with st=place.follow_up_state %}
+            <span class="pill pill-{{ st }}" style="font-size:13px;padding:5px 12px;">
+                {% if st == 'overdue' %}🔴 Overdue{% elif st == 'today' %}📅 Aaj{% else %}🕑 Scheduled{% endif %}
+                · {{ place.next_follow_up|date:'d M Y, H:i' }}
+            </span>
+            {% endwith %}
+            {% if place.follow_up_note %}<span style="font-size:13px;color:var(--text-muted);">{{ place.follow_up_note }}</span>{% endif %}
+            <form method="post" action="{% url 'set_follow_up' place.id %}" style="margin:0;">
+                {% csrf_token %}<input type="hidden" name="clear" value="1">
+                <button class="btn btn-secondary btn-sm" type="submit">✕ Hatao</button>
+            </form>
+        </div>
+    {% else %}
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+            Koi follow-up set nahi. Isse lead "aaj ka kaam" list mein aa jayegi.</p>
+    {% endif %}
+
+    <form method="post" action="{% url 'set_follow_up' place.id %}"
+          style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        {% csrf_token %}
+        <button name="preset" value="today"    class="btn btn-secondary btn-sm" type="submit">Aaj shaam</button>
+        <button name="preset" value="tomorrow" class="btn btn-secondary btn-sm" type="submit">Kal</button>
+        <button name="preset" value="3d"       class="btn btn-secondary btn-sm" type="submit">3 din</button>
+        <button name="preset" value="1w"       class="btn btn-secondary btn-sm" type="submit">1 hafta</button>
+        <span style="color:var(--text-muted);font-size:12px;">ya</span>
+        <input type="datetime-local" name="when" style="font-size:13px;padding:6px 10px;">
+        <input type="text" name="note" placeholder="Note (optional)" maxlength="300"
+               style="font-size:13px;padding:6px 10px;flex:1;min-width:150px;">
+        <button class="btn btn-primary btn-sm" type="submit">Set</button>
+    </form>
 </div>
 
 <div class="la-kpi">

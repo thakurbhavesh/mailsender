@@ -9,17 +9,25 @@ from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Max, Sum, F, Value, DateTimeField
 from django.db.models.functions import Coalesce, Greatest
-from django.shortcuts import render, get_object_or_404
+from django.contrib import messages
+from django.shortcuts import render, get_object_or_404, redirect
+from django.views.decorators.http import require_POST
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from .models import Place, EmailLog, CallLog, LeadAssignment, ScrapeJob, Meeting
+from .models import (Place, EmailLog, CallLog, LeadAssignment, ScrapeJob,
+                     Meeting, Suppression, SequenceEnrollment)
 
 
 # ─────────────────────────────────────────────────────────────
 # Engagement buckets — the "kis lead pe kaam hua" question
 # ─────────────────────────────────────────────────────────────
 WORK_CHOICES = [
+    ('due', '⏰ Follow-up due — aaj ya overdue'),
+    ('overdue', '🔴 Overdue — date nikal gayi'),
+    ('today', '📅 Aaj ka follow-up'),
+    ('no_followup', '❓ Koi follow-up set nahi'),
     ('untouched', '🆕 Untouched — koi kaam nahi hua'),
     ('worked', '✅ Worked — mail ya call hua'),
     ('emailed', '📧 Email bheja gaya'),
@@ -33,6 +41,7 @@ WORK_CHOICES = [
 ]
 
 SORT_CHOICES = [
+    ('next_follow_up', 'Follow-up: soonest first'),
     ('-last_activity_at', 'Last activity: newest'),
     ('last_activity_at', 'Last activity: oldest'),
     ('-total_opens', 'Most opened'),
@@ -43,6 +52,20 @@ SORT_CHOICES = [
     ('name', 'Name: A → Z'),
     ('-created_at', 'Newest lead'),
 ]
+
+def _local_day_bounds(day=None):
+    """Start and end of a local calendar day, as aware datetimes.
+
+    Using now.replace(hour=0) would give UTC midnight, which is 5.5 hours off
+    the day people actually mean in Asia/Kolkata.
+    """
+    from datetime import datetime as _dt, time as _time
+    day = day or timezone.localdate()
+    tz = timezone.get_current_timezone()
+    start = timezone.make_aware(_dt.combine(day, _time.min), tz)
+    end = timezone.make_aware(_dt.combine(day, _time.max), tz)
+    return start, end
+
 
 # Stand-in for NULL so Greatest() behaves the same on SQLite and Postgres.
 # Must be timezone-aware — USE_TZ is on.
@@ -73,6 +96,17 @@ def _annotate_engagement(qs):
 
 def _apply_work_filter(qs, work):
     """Filter by what has (or hasn't) actually been done on the lead."""
+    now = timezone.now()
+    if work == 'due':
+        # Anything already past, plus the rest of today.
+        _, end_of_today = _local_day_bounds()
+        return qs.filter(next_follow_up__isnull=False, next_follow_up__lte=end_of_today)
+    if work == 'overdue':
+        return qs.filter(next_follow_up__isnull=False, next_follow_up__lt=now)
+    if work == 'today':
+        return qs.filter(next_follow_up__range=_local_day_bounds())
+    if work == 'no_followup':
+        return qs.filter(next_follow_up__isnull=True)
     if work == 'untouched':
         return qs.filter(email_count=0, call_count=0)
     if work == 'worked':
@@ -146,6 +180,8 @@ def lead_management(request):
         called=Count('id', filter=Q(call_count__gt=0), distinct=True),
         untouched=Count('id', filter=Q(email_count=0, call_count=0), distinct=True),
         converted=Count('id', filter=Q(lead_status='converted'), distinct=True),
+        overdue=Count('id', filter=Q(next_follow_up__lt=timezone.now()), distinct=True),
+        due_today=Count('id', filter=Q(next_follow_up__range=_local_day_bounds()), distinct=True),
     )
     total = stats['total'] or 0
     stats['worked'] = total - (stats['untouched'] or 0)
@@ -300,3 +336,144 @@ def lead_activity(request, place_id):
         'calls': CallLog.objects.filter(place=place).select_related('caller'),
         'status_choices': Place.LEAD_STATUS_CHOICES,
     })
+
+
+# ─────────────────────────────────────────────────────────────
+# Follow-ups and bulk actions
+# ─────────────────────────────────────────────────────────────
+def _parse_when(value, preset):
+    """Turn either a datetime-local string or a preset like '3d' into a time."""
+    now = timezone.now()
+    local_now = timezone.localtime(now)
+    presets = {
+        'today': timezone.localtime(now).replace(hour=17, minute=0, second=0, microsecond=0),
+        'tomorrow': (local_now + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0),
+        '3d': now + timedelta(days=3),
+        '1w': now + timedelta(days=7),
+        '2w': now + timedelta(days=14),
+        '1m': now + timedelta(days=30),
+    }
+    if preset in presets:
+        return presets[preset]
+    if value:
+        parsed = parse_datetime(value)
+        if parsed and timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed)
+        return parsed
+    return None
+
+
+@require_POST
+def set_follow_up(request, place_id):
+    """Schedule (or clear) the next touch on one lead."""
+    place = get_object_or_404(Place, id=place_id)
+
+    if request.POST.get('clear'):
+        place.next_follow_up = None
+        place.follow_up_note = ''
+        place.save(update_fields=['next_follow_up', 'follow_up_note'])
+        messages.success(request, '✓ Follow-up hata diya.')
+    else:
+        when = _parse_when(request.POST.get('when', ''), request.POST.get('preset', ''))
+        if not when:
+            messages.error(request, 'Koi valid date nahi mili.')
+            return redirect(request.META.get('HTTP_REFERER') or 'lead_management')
+        place.next_follow_up = when
+        place.follow_up_note = request.POST.get('note', '').strip()[:300]
+        place.save(update_fields=['next_follow_up', 'follow_up_note'])
+        messages.success(request, '⏰ Follow-up set: %s' % timezone.localtime(when).strftime('%d %b %Y, %H:%M'))
+
+    return redirect(request.META.get('HTTP_REFERER') or 'lead_management')
+
+
+@require_POST
+def lead_bulk_action(request):
+    """Apply one action to the leads ticked on the Lead Management table."""
+    ids = request.POST.getlist('ids')
+    action = request.POST.get('action', '').strip()
+    back = request.META.get('HTTP_REFERER') or reverse('lead_management')
+
+    if not ids:
+        messages.error(request, 'Pehle kuch leads select karein.')
+        return redirect(back)
+
+    qs = Place.objects.filter(id__in=ids)
+    n = qs.count()
+
+    if action.startswith('status:'):
+        new_status = action.split(':', 1)[1]
+        if new_status in dict(Place.LEAD_STATUS_CHOICES):
+            qs.update(lead_status=new_status, updated_at=timezone.now())
+            messages.success(request, '✓ %d leads ko %s kiya.' % (n, new_status))
+        else:
+            messages.error(request, 'Unknown status.')
+
+    elif action.startswith('followup:'):
+        when = _parse_when('', action.split(':', 1)[1])
+        if when:
+            qs.update(next_follow_up=when, updated_at=timezone.now())
+            messages.success(request, '⏰ %d leads ka follow-up %s pe set kiya.'
+                             % (n, timezone.localtime(when).strftime('%d %b, %H:%M')))
+
+    elif action == 'clear_followup':
+        qs.update(next_follow_up=None, follow_up_note='', updated_at=timezone.now())
+        messages.success(request, '✓ %d leads ka follow-up hataya.' % n)
+
+    elif action == 'suppress':
+        # Stop emailing these addresses, and halt any drip already running.
+        emails = [e for e in qs.values_list('email', flat=True) if e]
+        for addr in emails:
+            Suppression.add(addr, reason='manual', note='Bulk action from Lead Management')
+        SequenceEnrollment.objects.filter(place__in=qs, status='active').update(
+            status='stopped', stop_reason='Suppressed by admin')
+        messages.success(request, '🚫 %d addresses suppression list mein daale.' % len(emails))
+
+    else:
+        messages.error(request, 'Unknown action.')
+
+    return redirect(back)
+
+
+def suppression_list(request):
+    """Who we must not email, and why."""
+    q = request.GET.get('q', '').strip()
+    reason = request.GET.get('reason', '').strip()
+
+    rows = Suppression.objects.select_related('place')
+    if q:
+        rows = rows.filter(email__icontains=q)
+    if reason:
+        rows = rows.filter(reason=reason)
+
+    counts = {r['reason']: r['count'] for r in
+              Suppression.objects.values('reason').annotate(count=Count('id'))}
+
+    page = Paginator(rows, 50).get_page(request.GET.get('page'))
+    return render(request, 'scraper/email/suppressions.html', {
+        'page': page, 'q': q, 'reason': reason,
+        'total': Suppression.objects.count(),
+        'counts': counts,
+        'reason_choices': Suppression.REASON_CHOICES,
+    })
+
+
+@require_POST
+def suppression_add(request):
+    addr = request.POST.get('email', '').strip()
+    if not addr or '@' not in addr:
+        messages.error(request, 'Valid email daalein.')
+    else:
+        Suppression.add(addr, reason='manual',
+                        note=request.POST.get('note', '').strip())
+        messages.success(request, '🚫 %s ab suppression list mein hai.' % addr)
+    return redirect('suppression_list')
+
+
+@require_POST
+def suppression_remove(request, supp_id):
+    """Undo — someone asked back in, or it was added by mistake."""
+    s = get_object_or_404(Suppression, id=supp_id)
+    addr = s.email
+    s.delete()
+    messages.success(request, '✓ %s list se hataya — ab mail ja sakta hai.' % addr)
+    return redirect('suppression_list')

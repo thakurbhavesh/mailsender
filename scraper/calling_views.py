@@ -250,7 +250,20 @@ def caller_quick_outcome(request, assignment_id):
     if note:
         sep = '\n' if place.notes else ''
         place.notes = (place.notes or '') + f"{sep}[{timezone.now():%Y-%m-%d %H:%M} {request.user.username}] {note}"
-    place.save(update_fields=['lead_status', 'notes', 'updated_at'])
+    # A callback the caller booked is the lead's next follow-up, so the admin
+    # queue shows it too instead of it living only in the caller's own list.
+    fields = ['lead_status', 'notes', 'updated_at']
+    if cb:
+        place.next_follow_up = cb
+        place.follow_up_note = 'Callback requested'
+        fields += ['next_follow_up', 'follow_up_note']
+    elif outcome in {'converted', 'rejected', 'not_interested', 'wrong_number'}:
+        # Closed either way — nothing left to chase.
+        place.next_follow_up = None
+        place.follow_up_note = ''
+        fields += ['next_follow_up', 'follow_up_note']
+
+    place.save(update_fields=fields)
 
     # Process @mentions in note
     if note:
@@ -353,7 +366,20 @@ def caller_update_lead(request, assignment_id):
     if notes:
         sep = '\n' if place.notes else ''
         place.notes = (place.notes or '') + f"{sep}[{timezone.now():%Y-%m-%d %H:%M} {request.user.username}] {notes}"
-    place.save(update_fields=['lead_status', 'notes', 'updated_at'])
+    # A callback the caller booked is the lead's next follow-up, so the admin
+    # queue shows it too instead of it living only in the caller's own list.
+    fields = ['lead_status', 'notes', 'updated_at']
+    if cb:
+        place.next_follow_up = cb
+        place.follow_up_note = 'Callback requested'
+        fields += ['next_follow_up', 'follow_up_note']
+    elif outcome in {'converted', 'rejected', 'not_interested', 'wrong_number'}:
+        # Closed either way — nothing left to chase.
+        place.next_follow_up = None
+        place.follow_up_note = ''
+        fields += ['next_follow_up', 'follow_up_note']
+
+    place.save(update_fields=fields)
 
     # Auto-assign next batch if pending hit zero (only if enabled)
     if pending_count(request.user) == 0:

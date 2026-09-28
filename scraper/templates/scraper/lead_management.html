@@ -1,5 +1,48 @@
 {% extends 'scraper/base.html' %}
-{% block heading %}🎯 Lead Management{% endblock %}
+{% block heading %}🎯 Lead Management
+<script>
+(function () {
+    const form  = document.getElementById('bulkForm');
+    const bar   = document.getElementById('bulkBar');
+    const count = document.getElementById('bulkCount');
+    const all   = document.getElementById('selAll');
+    if (!form) return;
+
+    const rows = () => Array.from(form.querySelectorAll('.rowSel'));
+
+    function refresh() {
+        const picked = rows().filter(r => r.checked).length;
+        count.textContent = picked;
+        bar.hidden = picked === 0;
+        all.checked = picked > 0 && picked === rows().length;
+        all.indeterminate = picked > 0 && picked < rows().length;
+    }
+
+    all.addEventListener('change', () => {
+        rows().forEach(r => { r.checked = all.checked; });
+        refresh();
+    });
+    form.addEventListener('change', e => { if (e.target.classList.contains('rowSel')) refresh(); });
+
+    window.clearSel = function () {
+        rows().forEach(r => { r.checked = false; });
+        all.checked = all.indeterminate = false;
+        refresh();
+    };
+
+    form.addEventListener('submit', e => {
+        const action = form.querySelector('[name=action]').value;
+        const n = rows().filter(r => r.checked).length;
+        if (action === 'suppress' &&
+            !confirm(n + ' leads ko suppress karein? Inhe dobara mail nahi jayega.')) {
+            e.preventDefault();
+        }
+    });
+
+    refresh();
+})();
+</script>
+{% endblock %}
 {% block subheading %}Har lead pe kya kaam hua — mail kab gaya, kab open hua, kaun laga hai{% endblock %}
 {% block content %}
 
@@ -38,6 +81,17 @@
 .num.zero { color:#cbd5e1; font-weight:500; }
 .when { font-size:11px; color:var(--text-muted); white-space:nowrap; }
 
+.pill-overdue  { background:#fee2e2; color:#b91c1c; }
+.pill-today    { background:#fef3c7; color:#92400e; }
+.pill-upcoming { background:#e0e7ff; color:#3730a3; }
+
+.bulk-bar { position:sticky; top:0; z-index:20; display:flex; gap:10px; align-items:center;
+            flex-wrap:wrap; background:#0f172a; color:#fff; padding:10px 14px;
+            border-radius:10px; margin-bottom:10px; font-size:13px; }
+.bulk-bar select { padding:7px 10px; border-radius:8px; border:0; font-size:13px; font-family:inherit; }
+.bulk-bar b { font-size:15px; }
+.rowSel, #selAll { width:16px; height:16px; cursor:pointer; accent-color:var(--primary,#4f46e5); }
+
 @media (max-width: 900px) {
     .lm-kpi { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
     .lm-kpi .k { padding:11px 13px; }
@@ -53,6 +107,10 @@
 
 <!-- ───────── KPI strip ───────── -->
 <div class="lm-kpi">
+    <div class="k hot"><div class="lab">🔴 Overdue</div><div class="val">{{ stats.overdue }}</div>
+        <div class="sub">follow-up nikal gaya</div></div>
+    <div class="k warn"><div class="lab">📅 Aaj due</div><div class="val">{{ stats.due_today }}</div>
+        <div class="sub">aaj karna hai</div></div>
     <div class="k"><div class="lab">Total leads</div><div class="val">{{ stats.total }}</div>
         <div class="sub">filter ke andar</div></div>
     <div class="k good"><div class="lab">✅ Kaam hua</div><div class="val">{{ stats.worked }}</div>
@@ -133,11 +191,37 @@
         </span>
     </div>
 
+    <form method="post" action="{% url 'lead_bulk_action' %}" id="bulkForm">
+    {% csrf_token %}
+    <div class="bulk-bar" id="bulkBar" hidden>
+        <span><b id="bulkCount">0</b> selected</span>
+        <select name="action" required>
+            <option value="">Action chunein…</option>
+            <optgroup label="Follow-up">
+                <option value="followup:today">⏰ Aaj shaam</option>
+                <option value="followup:tomorrow">⏰ Kal subah</option>
+                <option value="followup:3d">⏰ 3 din baad</option>
+                <option value="followup:1w">⏰ 1 hafte baad</option>
+                <option value="clear_followup">✕ Follow-up hatao</option>
+            </optgroup>
+            <optgroup label="Status">
+                {% for v,l in status_choices %}<option value="status:{{ v }}">→ {{ l }}</option>{% endfor %}
+            </optgroup>
+            <optgroup label="Email">
+                <option value="suppress">🚫 Suppress (mail mat bhejo)</option>
+            </optgroup>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="clearSel()">Clear</button>
+    </div>
+
     <div style="overflow-x:auto;">
     <table class="lm-table">
         <thead>
             <tr>
+                <th style="width:28px;"><input type="checkbox" id="selAll" title="Sab select"></th>
                 <th>Lead</th>
+                <th>Follow-up</th>
                 <th>Kaam status</th>
                 <th>Owner</th>
                 <th>📧 Mails</th>
@@ -153,12 +237,22 @@
         <tbody>
         {% for p in page %}
             <tr>
+                <td><input type="checkbox" name="ids" value="{{ p.id }}" class="rowSel"></td>
                 <td>
                     <a href="{% url 'lead_activity' p.id %}" class="lm-name">{{ p.name|truncatechars:38 }}</a>
                     <div class="lm-sub">
                         {% if p.email %}✉ {{ p.email|truncatechars:28 }}{% else %}<span style="color:#cbd5e1;">no email</span>{% endif %}
                         {% if p.phone %} · ☎ {{ p.phone }}{% endif %}
                     </div>
+                </td>
+                <td class="when">
+                    {% if p.next_follow_up %}
+                        {% with st=p.follow_up_state %}
+                        <span class="pill pill-{{ st }}">{% if st == 'overdue' %}🔴{% elif st == 'today' %}📅{% else %}🕑{% endif %}
+                            {{ p.next_follow_up|date:'d M, H:i' }}</span>
+                        {% endwith %}
+                        {% if p.follow_up_note %}<div class="lm-sub">{{ p.follow_up_note|truncatechars:34 }}</div>{% endif %}
+                    {% else %}<span style="color:#cbd5e1;">—</span>{% endif %}
                 </td>
                 <td>
                     {% if p.email_count == 0 and p.call_count == 0 %}
@@ -192,12 +286,13 @@
                 </td>
             </tr>
         {% empty %}
-            <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--text-muted);">
+            <tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text-muted);">
                 Is filter pe koi lead nahi mili.</td></tr>
         {% endfor %}
         </tbody>
     </table>
     </div>
+    </form>
 
     {% if page.has_other_pages %}
     <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap;">
