@@ -114,6 +114,9 @@
         :root[data-theme="dark"] #themeToggle { background:var(--card); border-color:var(--border); }
         :root[data-theme="dark"] #themeToggle:hover { background:var(--card-hover); }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* The hidden attribute relies on the UA's display:none, which any
+           display in our own CSS silently beats. Make it win. */
+        [hidden] { display: none !important; }
         html, body { height: 100%; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;

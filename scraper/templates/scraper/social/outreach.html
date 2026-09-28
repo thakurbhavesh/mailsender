@@ -54,6 +54,10 @@
 .logbar select { padding:7px 10px; border-radius:8px; border:0; font-size:13px; font-family:inherit; }
 .rowSel, #selAll { width:16px; height:16px; cursor:pointer; accent-color:var(--primary,#4f46e5); }
 
+.ask-net { position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:400;
+           display:grid; place-items:center; padding:20px; }
+.ask-net .box { background:var(--card,#fff); border-radius:14px; padding:22px; max-width:360px; width:100%; }
+
 .quick { display:flex; gap:4px; }
 .quick button { border:1px solid var(--border); background:#fff; border-radius:7px;
                 padding:4px 8px; font-size:11px; cursor:pointer; font-family:inherit;
@@ -218,9 +222,8 @@
 </div>
 
 <!-- Quick-log form: which network was it? -->
-<div id="askNet" hidden
-     style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:400;display:grid;place-items:center;padding:20px;">
-  <div style="background:var(--card,#fff);border-radius:14px;padding:22px;max-width:360px;width:100%;">
+<div id="askNet" class="ask-net" hidden>
+  <div class="box">
     <h3 style="margin:0 0 6px;font-size:16px;">Which network?</h3>
     <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;" id="askWhat"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -284,8 +287,12 @@ function sendTouch(platform) {
 
     closeAsk();
 }
+// Close on backdrop click or Escape, not only the Cancel button.
 document.getElementById('askNet').addEventListener('click', e => {
     if (e.target.id === 'askNet') closeAsk();
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('askNet').hidden) closeAsk();
 });
 </script>
 {% endblock %}
