@@ -125,6 +125,19 @@ class Place(models.Model):
             score += 5
         return min(score, 100)
 
+    SOCIAL_FIELDS = (('facebook', 'Facebook'), ('instagram', 'Instagram'),
+                     ('linkedin', 'LinkedIn'))
+
+    @property
+    def social_profiles(self):
+        """[(key, label, url)] for the networks this lead actually has."""
+        return [(k, label, getattr(self, k))
+                for k, label in self.SOCIAL_FIELDS if getattr(self, k)]
+
+    @property
+    def social_count(self):
+        return len(self.social_profiles)
+
     @property
     def follow_up_state(self):
         """'overdue', 'today', 'upcoming' or '' — drives the queue badges."""
@@ -369,6 +382,58 @@ class Suppression(models.Model):
             defaults={'reason': reason, 'place': place, 'note': note[:300]},
         )
         return obj
+
+
+class SocialTouch(models.Model):
+    """One action taken on a lead's social profile.
+
+    Social outreach is otherwise invisible: someone opens a LinkedIn page,
+    sends a DM, and nothing in the system knows. Recording it keeps the lead
+    timeline honest and stops two people messaging the same business.
+    """
+    PLATFORM_CHOICES = [
+        ('facebook', 'Facebook'),
+        ('instagram', 'Instagram'),
+        ('linkedin', 'LinkedIn'),
+        ('whatsapp', 'WhatsApp'),
+    ]
+    # Ordered weakest to strongest — the lead's status is the strongest
+    # action anyone has taken.
+    ACTION_CHOICES = [
+        ('visited', 'Profile opened'),
+        ('followed', 'Followed / liked'),
+        ('connected', 'Connection request sent'),
+        ('messaged', 'Message sent'),
+        ('replied', 'They replied'),
+        ('no_response', 'No response'),
+    ]
+    ACTION_RANK = {
+        'visited': 1, 'followed': 2, 'no_response': 3,
+        'connected': 4, 'messaged': 5, 'replied': 6,
+    }
+
+    place = models.ForeignKey(Place, on_delete=models.CASCADE, related_name='social_touches')
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='visited')
+    note = models.CharField(max_length=300, blank=True, default='')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                             null=True, blank=True, related_name='social_touches')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['place', 'platform']),
+            models.Index(fields=['action', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.place.name} · {self.get_platform_display()} · {self.get_action_display()}"
+
+    @property
+    def is_real_outreach(self):
+        """Opening a page is not outreach; messaging is."""
+        return self.action in ('connected', 'messaged', 'replied')
 
 
 # ============================================================

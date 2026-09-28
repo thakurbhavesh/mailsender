@@ -13,7 +13,7 @@ from django.utils import timezone
 from .email_service import append_unsub_footer, deliver
 from .lead_views import _annotate_engagement, _apply_work_filter, build_timeline
 from .models import (CallLog, EmailAccount, EmailLog, EmailSequence, EmailTemplate,
-                     Place, ScrapeJob, SequenceEnrollment, Suppression)
+                     Place, ScrapeJob, SequenceEnrollment, SocialTouch, Suppression)
 
 
 def make_place(name='Acme Ltd', email='a@example.com', **kw):
@@ -355,3 +355,88 @@ class BulkActionTests(TestCase):
     def test_no_selection_is_rejected(self):
         r = self.client.post('/leads/bulk/', {'action': 'status:interested'}, follow=True)
         self.assertContains(r, 'select')
+
+
+class SocialOutreachTests(TestCase):
+    """Social has no open or click tracking, so every action has to be
+    recorded deliberately — and recorded once."""
+
+    def setUp(self):
+        self.user = User.objects.create_superuser('social', 's@example.com', 'x')
+        self.client.force_login(self.user)
+        self.lead = make_place('Social Co', 's@example.com', unique_key='sc')
+        self.lead.facebook = 'https://facebook.com/socialco'
+        self.lead.linkedin = 'https://linkedin.com/company/socialco'
+        self.lead.save()
+        self.bare = make_place('No Social', 'n@example.com', unique_key='ns')
+
+    def test_profiles_helper_lists_only_what_exists(self):
+        keys = [k for k, _label, _url in self.lead.social_profiles]
+        self.assertEqual(keys, ['facebook', 'linkedin'])
+        self.assertEqual(self.lead.social_count, 2)
+        self.assertEqual(self.bare.social_profiles, [])
+
+    def test_opening_a_profile_logs_it_and_redirects(self):
+        r = self.client.get('/social/%d/open/facebook/' % self.lead.pk)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r.url, 'https://facebook.com/socialco')
+        self.assertEqual(
+            SocialTouch.objects.filter(place=self.lead, action='visited').count(), 1)
+
+    def test_repeat_visits_the_same_day_are_not_double_logged(self):
+        self.client.get('/social/%d/open/facebook/' % self.lead.pk)
+        self.client.get('/social/%d/open/facebook/' % self.lead.pk)
+        self.assertEqual(
+            SocialTouch.objects.filter(place=self.lead, action='visited').count(), 1)
+
+    def test_opening_a_missing_profile_does_not_log(self):
+        r = self.client.get('/social/%d/open/instagram/' % self.lead.pk, follow=True)
+        self.assertEqual(SocialTouch.objects.filter(place=self.lead).count(), 0)
+        self.assertContains(r, 'No Instagram profile')
+
+    def test_messaging_moves_a_new_lead_to_contacted(self):
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'linkedin', 'action': 'messaged'})
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lead_status, 'contacted')
+
+    def test_a_reply_moves_the_lead_to_interested(self):
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'facebook', 'action': 'replied'})
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lead_status, 'interested')
+
+    def test_a_reply_does_not_demote_a_converted_lead(self):
+        self.lead.lead_status = 'converted'
+        self.lead.save()
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'facebook', 'action': 'replied'})
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lead_status, 'converted')
+
+    def test_bulk_logs_one_row_per_lead(self):
+        other = make_place('Second Co', 'x@example.com', unique_key='s2')
+        self.client.post('/social/bulk/', {
+            'ids': [self.lead.pk, other.pk],
+            'platform': 'instagram', 'action': 'messaged'})
+        self.assertEqual(SocialTouch.objects.filter(action='messaged').count(), 2)
+
+    def test_state_filters_partition_the_list(self):
+        self.client.get('/social/%d/open/facebook/' % self.lead.pk)
+        names = lambda st: {p.name for p in
+                            self.client.get('/social/?state=%s' % st).context['page']}
+        self.assertIn('Social Co', names('has_social'))
+        self.assertIn('No Social', names('no_social'))
+        self.assertIn('Social Co', names('visited'))
+        self.assertNotIn('Social Co', names('messaged'))
+
+    def test_touches_reach_the_lead_timeline(self):
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'linkedin', 'action': 'messaged'})
+        kinds = [e['kind'] for e in build_timeline(self.lead)]
+        self.assertIn('social', kinds)
+
+    def test_a_bad_platform_is_rejected(self):
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'myspace', 'action': 'messaged'})
+        self.assertEqual(SocialTouch.objects.count(), 0)

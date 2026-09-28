@@ -1,0 +1,291 @@
+{% extends 'scraper/base.html' %}
+{% block heading %}Social Outreach{% endblock %}
+{% block subheading %}Reach leads on Facebook, Instagram and LinkedIn — and keep a record of it{% endblock %}
+{% block content %}
+
+<style>
+.so-kpi { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+.so-kpi .k { background:var(--card,#fff); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.so-kpi .k .lab { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); font-weight:700; }
+.so-kpi .k .val { font-size:26px; font-weight:800; line-height:1.2; margin-top:4px; }
+.so-kpi .k .sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.so-kpi .k.fb .val { color:#1877f2; }
+.so-kpi .k.ig .val { color:#c13584; }
+.so-kpi .k.li .val { color:#0a66c2; }
+.so-kpi .k.good .val { color:#059669; }
+.so-kpi .k.cold .val { color:#64748b; }
+
+.so-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.so-chips a { font-size:12px; padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+              text-decoration:none; color:var(--text-muted); background:#fff; white-space:nowrap; }
+.so-chips a.on { background:var(--primary,#4f46e5); color:#fff; border-color:transparent; font-weight:600; }
+
+.so-table { width:100%; border-collapse:collapse; font-size:13px; }
+.so-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px;
+               color:var(--text-muted); padding:10px 8px; border-bottom:2px solid var(--border); white-space:nowrap; }
+.so-table td { padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+.so-table tr:hover td { background:#f8fafc; }
+.so-name { font-weight:700; color:var(--text); text-decoration:none; }
+.so-name:hover { color:var(--primary,#4f46e5); text-decoration:underline; }
+.so-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+/* Platform buttons — brand colour, opens the profile through the logger */
+.net { display:inline-flex; align-items:center; justify-content:center; gap:5px;
+       width:34px; height:30px; border-radius:8px; font-size:13px; font-weight:800;
+       text-decoration:none; color:#fff; margin-right:4px; transition:transform .12s; }
+.net:hover { transform:translateY(-1px); filter:brightness(1.08); }
+.net-facebook  { background:#1877f2; }
+.net-instagram { background:linear-gradient(45deg,#f09433,#dc2743,#bc1888); }
+.net-linkedin  { background:#0a66c2; }
+.net-whatsapp  { background:#25d366; }
+.net-off { background:#f1f5f9; color:#cbd5e1; cursor:not-allowed; pointer-events:none; }
+
+.st { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+.st-none      { background:#f1f5f9; color:#475569; }
+.st-visited   { background:#e0e7ff; color:#3730a3; }
+.st-connected { background:#dbeafe; color:#1d4ed8; }
+.st-messaged  { background:#fef3c7; color:#92400e; }
+.st-replied   { background:#dcfce7; color:#15803d; }
+.st-no_response { background:#fee2e2; color:#b91c1c; }
+
+.logbar { position:sticky; top:0; z-index:20; display:flex; gap:10px; align-items:center;
+          flex-wrap:wrap; background:#0f172a; color:#fff; padding:10px 14px;
+          border-radius:10px; margin-bottom:10px; font-size:13px; }
+.logbar select { padding:7px 10px; border-radius:8px; border:0; font-size:13px; font-family:inherit; }
+.rowSel, #selAll { width:16px; height:16px; cursor:pointer; accent-color:var(--primary,#4f46e5); }
+
+.quick { display:flex; gap:4px; }
+.quick button { border:1px solid var(--border); background:#fff; border-radius:7px;
+                padding:4px 8px; font-size:11px; cursor:pointer; font-family:inherit;
+                white-space:nowrap; }
+.quick button:hover { border-color:var(--primary,#4f46e5); color:var(--primary,#4f46e5); }
+
+@media (max-width:900px) {
+    .so-kpi { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
+    .so-chips { overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; }
+}
+@media (max-width:640px) {
+    .so-kpi { grid-template-columns:1fr 1fr; }
+    .so-table { font-size:12px; }
+    .so-table th, .so-table td { padding:8px 6px; }
+}
+</style>
+
+<div class="so-kpi">
+    <div class="k"><div class="lab">Reachable on social</div><div class="val">{{ stats.with_social }}</div>
+        <div class="sub">have at least one profile</div></div>
+    <div class="k cold"><div class="lab">Not approached</div><div class="val">{{ stats.untouched }}</div>
+        <div class="sub">profile found, nothing sent</div></div>
+    <div class="k"><div class="lab">Messaged</div><div class="val">{{ stats.messaged }}</div>
+        <div class="sub">DM or connection sent</div></div>
+    <div class="k good"><div class="lab">Replied</div><div class="val">{{ stats.replied }}</div>
+        <div class="sub">{{ stats.reply_rate }}% reply rate</div></div>
+    <div class="k fb"><div class="lab">Facebook</div><div class="val">{{ stats.facebook }}</div></div>
+    <div class="k ig"><div class="lab">Instagram</div><div class="val">{{ stats.instagram }}</div></div>
+    <div class="k li"><div class="lab">LinkedIn</div><div class="val">{{ stats.linkedin }}</div></div>
+</div>
+
+<div class="so-chips">
+    {% for val, label in state_choices %}
+        <a href="?state={{ val }}{% if platform %}&platform={{ platform }}{% endif %}"
+           class="{% if state == val %}on{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header"><h2>Filters</h2></div>
+    <form method="get">
+        <input type="hidden" name="state" value="{{ state }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px;">
+            <input type="text" name="q" value="{{ q }}" placeholder="Search name or category" style="grid-column:span 2;">
+            <select name="platform">
+                <option value="">Any network</option>
+                {% for v,l in platform_choices %}<option value="{{ v }}" {% if v == platform %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+            <select name="lead_status">
+                <option value="">All statuses</option>
+                {% for v,l in status_choices %}<option value="{{ v }}" {% if v == lead_status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+            <select name="category">
+                <option value="">All categories</option>
+                {% for c in categories %}<option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>{% endfor %}
+            </select>
+            <select name="sort">
+                {% for v,l in sort_choices %}<option value="{{ v }}" {% if sort == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+            </select>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a href="{% url 'social_outreach' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Leads <span class="h2-count">{{ total_filtered }}</span></h2>
+        <span style="font-size:12px;color:var(--text-muted);">{{ page.start_index }}–{{ page.end_index }} of {{ total_filtered }}</span>
+    </div>
+
+    <form method="post" action="{% url 'social_bulk' %}" id="soForm">
+    {% csrf_token %}
+    <div class="logbar" id="logBar" hidden>
+        <span><b id="selCount">0</b> selected</span>
+        <select name="platform" required>
+            <option value="">Network…</option>
+            {% for v,l in platform_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+        </select>
+        <select name="action" required>
+            <option value="">Action…</option>
+            {% for v,l in action_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Log for selected</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="clearSel()">Clear</button>
+    </div>
+
+    <div style="overflow-x:auto;">
+    <table class="so-table">
+        <thead>
+            <tr>
+                <th style="width:28px;"><input type="checkbox" id="selAll" title="Select all"></th>
+                <th>Lead</th>
+                <th>Profiles</th>
+                <th>Status</th>
+                <th>Last touch</th>
+                <th>Log</th>
+                <th>Stage</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in page %}
+            <tr>
+                <td><input type="checkbox" name="ids" value="{{ p.id }}" class="rowSel"></td>
+                <td>
+                    <a href="{% url 'lead_activity' p.id %}" class="so-name">{{ p.name|truncatechars:34 }}</a>
+                    <div class="so-sub">{{ p.category|default:'—'|truncatechars:26 }}</div>
+                </td>
+                <td style="white-space:nowrap;">
+                    {% if p.facebook %}<a class="net net-facebook" target="_blank" rel="noopener"
+                        href="{% url 'social_open' p.id 'facebook' %}" title="Open Facebook profile">f</a>
+                    {% else %}<span class="net net-off" title="No Facebook">f</span>{% endif %}
+                    {% if p.instagram %}<a class="net net-instagram" target="_blank" rel="noopener"
+                        href="{% url 'social_open' p.id 'instagram' %}" title="Open Instagram profile">◎</a>
+                    {% else %}<span class="net net-off" title="No Instagram">◎</span>{% endif %}
+                    {% if p.linkedin %}<a class="net net-linkedin" target="_blank" rel="noopener"
+                        href="{% url 'social_open' p.id 'linkedin' %}" title="Open LinkedIn profile">in</a>
+                    {% else %}<span class="net net-off" title="No LinkedIn">in</span>{% endif %}
+                    {% if p.phone %}<a class="net net-whatsapp" target="_blank" rel="noopener"
+                        href="{{ p.whatsapp_link }}" title="Open WhatsApp chat">w</a>
+                    {% else %}<span class="net net-off" title="No phone">w</span>{% endif %}
+                </td>
+                <td>
+                    {% if p.latest_touch %}
+                        <span class="st st-{{ p.latest_touch.action }}">{{ p.latest_touch.get_action_display }}</span>
+                        <div class="so-sub">{{ p.latest_touch.get_platform_display }}</div>
+                    {% else %}<span class="st st-none">Not approached</span>{% endif %}
+                </td>
+                <td class="so-sub" style="white-space:nowrap;">
+                    {% if p.last_touch %}{{ p.last_touch|date:'d M, H:i' }}<br>
+                        <span style="color:#94a3b8;">{{ p.last_touch|timesince }} ago</span>
+                    {% else %}—{% endif %}
+                    {% if p.touch_count %}<div style="color:#94a3b8;">{{ p.touch_count }} touch{{ p.touch_count|pluralize:"es" }}</div>{% endif %}
+                </td>
+                <td>
+                    <div class="quick">
+                        <button type="button" onclick="logTouch({{ p.id }}, 'messaged', this)">Messaged</button>
+                        <button type="button" onclick="logTouch({{ p.id }}, 'replied', this)">Replied</button>
+                    </div>
+                </td>
+                <td><span class="badge badge-{{ p.lead_status }}">{{ p.get_lead_status_display }}</span>
+                    <div class="so-sub">score {{ p.lead_score }}</div></td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">
+                No leads match these filters.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    </form>
+
+    {% if page.has_other_pages %}
+    <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:16px;flex-wrap:wrap;">
+        {% if page.has_previous %}<a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page.previous_page_number }}">← Prev</a>{% endif %}
+        <span style="font-size:13px;color:var(--text-muted);">Page {{ page.number }} / {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a class="btn btn-secondary btn-sm" href="?{{ request.GET.urlencode }}&page={{ page.next_page_number }}">Next →</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick-log form: which network was it? -->
+<div id="askNet" hidden
+     style="position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:400;display:grid;place-items:center;padding:20px;">
+  <div style="background:var(--card,#fff);border-radius:14px;padding:22px;max-width:360px;width:100%;">
+    <h3 style="margin:0 0 6px;font-size:16px;">Which network?</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;" id="askWhat"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      {% for v,l in platform_choices %}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="sendTouch('{{ v }}')">{{ l }}</button>
+      {% endfor %}
+      <button type="button" class="btn btn-secondary btn-sm" onclick="sendTouch('whatsapp')">WhatsApp</button>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="closeAsk()">Cancel</button>
+  </div>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById('soForm');
+    const bar  = document.getElementById('logBar');
+    const cnt  = document.getElementById('selCount');
+    const all  = document.getElementById('selAll');
+    if (!form) return;
+    const rows = () => Array.from(form.querySelectorAll('.rowSel'));
+
+    function refresh() {
+        const n = rows().filter(r => r.checked).length;
+        cnt.textContent = n;
+        bar.hidden = n === 0;
+        all.checked = n > 0 && n === rows().length;
+        all.indeterminate = n > 0 && n < rows().length;
+    }
+    all.addEventListener('change', () => { rows().forEach(r => r.checked = all.checked); refresh(); });
+    form.addEventListener('change', e => { if (e.target.classList.contains('rowSel')) refresh(); });
+    window.clearSel = () => { rows().forEach(r => r.checked = false); all.checked = all.indeterminate = false; refresh(); };
+    refresh();
+})();
+
+/* Quick log — ask which network, then post it without leaving the page. */
+let pending = null;
+function logTouch(placeId, action, btn) {
+    pending = { placeId, action, btn };
+    document.getElementById('askWhat').textContent =
+        action === 'replied' ? 'Where did they reply?' : 'Where did you message them?';
+    document.getElementById('askNet').hidden = false;
+}
+function closeAsk() { document.getElementById('askNet').hidden = true; pending = null; }
+
+function sendTouch(platform) {
+    if (!pending) return;
+    const { placeId, action, btn } = pending;
+    const body = new FormData();
+    body.append('platform', platform);
+    body.append('action', action);
+    body.append('csrfmiddlewaretoken',
+                document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    fetch('/social/' + placeId + '/log/', {
+        method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    }).then(r => r.json()).then(() => {
+        btn.textContent = '✓ ' + btn.textContent.replace('✓ ', '');
+        btn.style.borderColor = '#22c55e';
+        btn.style.color = '#15803d';
+    }).catch(() => { btn.textContent = 'Failed'; });
+
+    closeAsk();
+}
+document.getElementById('askNet').addEventListener('click', e => {
+    if (e.target.id === 'askNet') closeAsk();
+});
+</script>
+{% endblock %}

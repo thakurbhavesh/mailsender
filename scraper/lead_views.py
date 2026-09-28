@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from .models import (Place, EmailLog, CallLog, LeadAssignment, ScrapeJob,
-                     Meeting, Suppression, SequenceEnrollment)
+                     Meeting, Suppression, SequenceEnrollment, SocialTouch)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -273,6 +273,15 @@ def build_timeline(place):
             'title': 'Call: %s' % call.get_outcome_display(),
             'detail': call.notes[:200] or 'No notes',
             'meta': 'by %s' % call.caller.username,
+        })
+
+    for t in SocialTouch.objects.filter(place=place).select_related('user'):
+        icons = {'facebook': '📘', 'instagram': '📸', 'linkedin': '💼', 'whatsapp': '💬'}
+        events.append({
+            'at': t.created_at, 'kind': 'social', 'icon': icons.get(t.platform, '🌐'),
+            'title': '%s on %s' % (t.get_action_display(), t.get_platform_display()),
+            'detail': t.note or '',
+            'meta': 'by %s' % t.user.username if t.user else '',
         })
 
     for a in LeadAssignment.objects.filter(place=place).select_related('caller', 'assigned_by'):

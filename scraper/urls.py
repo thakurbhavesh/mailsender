@@ -3,6 +3,7 @@ from . import (
     views, email_views, ai_views, calling_views, import_views, analytics_views,
     extra_views, shift_views, sse_views, report_views,
     email_tracking, sequence_views, calendar_views, sync_api, lead_views,
+    social_views,
 )
 
 urlpatterns = [
@@ -22,6 +23,12 @@ urlpatterns = [
     path('leads/<int:place_id>/activity/', lead_views.lead_activity, name='lead_activity'),
     path('leads/<int:place_id>/follow-up/', lead_views.set_follow_up, name='set_follow_up'),
     path('leads/bulk/', lead_views.lead_bulk_action, name='lead_bulk_action'),
+    # ── Social outreach ──
+    path('social/', social_views.social_outreach, name='social_outreach'),
+    path('social/<int:place_id>/open/<str:platform>/', social_views.social_open, name='social_open'),
+    path('social/<int:place_id>/log/', social_views.social_log, name='social_log'),
+    path('social/bulk/', social_views.social_bulk, name='social_bulk'),
+
     path('email/suppressions/', lead_views.suppression_list, name='suppression_list'),
     path('email/suppressions/add/', lead_views.suppression_add, name='suppression_add'),
     path('email/suppressions/<int:supp_id>/remove/', lead_views.suppression_remove, name='suppression_remove'),

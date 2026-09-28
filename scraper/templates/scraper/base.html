@@ -797,6 +797,7 @@
                 <div class="nav-sub">
                     <a href="{% url 'compose_bulk' %}" class="{% if 'compose' in request.resolver_match.url_name %}active{% endif %}">Compose & Send</a>
                     <a href="{% url 'sequences_list' %}" class="{% if 'sequence' in request.resolver_match.url_name or 'step' in request.resolver_match.url_name %}active{% endif %}">Drip Sequences</a>
+                    <a href="{% url 'social_outreach' %}" class="{% if 'social' in request.resolver_match.url_name %}active{% endif %}">Social Outreach</a>
                     <a href="{% url 'whatsapp_bulk' %}" class="{% if request.resolver_match.url_name == 'whatsapp_bulk' %}active{% endif %}">WhatsApp Bulk</a>
                     <a href="{% url 'email_history' %}" class="{% if 'history' in request.resolver_match.url_name or 'log' in request.resolver_match.url_name %}active{% endif %}">Email History</a>
                     <a href="{% url 'suppression_list' %}" class="{% if 'suppression' in request.resolver_match.url_name %}active{% endif %}">Suppression List</a>
