@@ -6,26 +6,28 @@ DNS: `mailsender` A record → `66.116.249.96` ✅ already set (TTL 14400)
 
 ---
 
-## ⚠️ Step 0 — Check karo ki port 80/443 free hai
+## Step 0 — Server ki maujooda haalat (check ho chuki hai)
 
-Is server par `thechatnest.com` pehle se chal raha hai. Agar wahan cPanel/Apache hai, to
-nginx install karte hi conflict hoga **aur thechatnest.com down ho jayega**. Pehle ye chalao:
+`ssh chatnest` se verify kiya gaya:
 
-```bash
-ssh root@66.116.249.96          # ya jo user aapne banaya hai
-
-sudo ss -tlnp | grep -E ':80|:443'
-which apache2 httpd nginx
-ls /usr/local/cpanel 2>/dev/null && echo "⚠️ cPanel server hai"
-```
-
-**Result ke hisaab se:**
-
-| Kya mila | Kya karo |
+| Cheez | Haalat |
 |---|---|
-| Kuch nahi (ports free) | Neeche Step 1 se aage badho — nginx install karo |
-| `nginx` chal raha hai | nginx install skip karo, sirf server block add karo (Step 6) |
-| `apache2` / cPanel chal raha hai | **nginx mat install karo.** Apache vhost banao (neeche "Apache variant" dekho) |
+| OS | Ubuntu 22.04.5 LTS |
+| nginx | **already chal raha hai** — dobara install mat karna |
+| cPanel / Apache | nahi hai |
+| PostgreSQL | installed + active |
+| certbot | installed |
+| Python | 3.10.12 |
+| Disk | 81 GB free |
+
+**Pehle se chalne wale sites** (inhe chhedna nahi):
+`thechatnest`, `visitorconnect`, `vvmtechnologies` (Next.js on :3000)
+
+**Do zaroori baatein:**
+1. **Port 8001 free nahi hai** — `daphne` us par chal raha hai. Isliye gunicorn
+   **8011** par bind hoga (`GUNICORN_BIND` in `.env`).
+2. `vvmtechnologies.com` vhost ka `server_name` wildcard nahi hai, isliye
+   `mailsender.vvmtechnologies.com` ke liye alag block safe hai.
 
 ---
 
@@ -143,7 +145,10 @@ Problem aaye to: `sudo journalctl -u leadhunt -n 50 --no-pager`
 ```bash
 curl -I https://mailsender.vvmtechnologies.com/login/        # 200 aana chahiye
 curl -I https://mailsender.vvmtechnologies.com/t/o/test.gif  # 200, image/gif
-curl -I http://thechatnest.com                               # abhi bhi zinda hai?
+
+# Baaki teen sites abhi bhi zinda hain?
+curl -I https://thechatnest.com
+curl -I https://vvmtechnologies.com
 ```
 
 Browser mein `https://mailsender.vvmtechnologies.com/leads/` — Lead Management page khulna chahiye.
@@ -155,42 +160,6 @@ Browser mein `https://mailsender.vvmtechnologies.com/leads/` — Lead Management
 ```bash
 sudo -u leadhunt -i
 cd /opt/leadhunt && bash deploy/deploy.sh
-```
-
----
-
-## Apache variant (agar server pe cPanel/Apache hai)
-
-nginx skip karo. `/etc/apache2/sites-available/mailsender.conf`:
-
-```apache
-<VirtualHost *:80>
-    ServerName mailsender.vvmtechnologies.com
-    Redirect permanent / https://mailsender.vvmtechnologies.com/
-</VirtualHost>
-
-<VirtualHost *:443>
-    ServerName mailsender.vvmtechnologies.com
-
-    SSLEngine on
-    SSLCertificateFile    /etc/letsencrypt/live/mailsender.vvmtechnologies.com/fullchain.pem
-    SSLCertificateKeyFile /etc/letsencrypt/live/mailsender.vvmtechnologies.com/privkey.pem
-
-    ProxyPreserveHost On
-    RequestHeader set X-Forwarded-Proto "https"
-    ProxyPass        /static/ !
-    Alias /static/ /opt/leadhunt/staticfiles/
-    <Directory /opt/leadhunt/staticfiles>Require all granted</Directory>
-    ProxyPass        / http://127.0.0.1:8001/
-    ProxyPassReverse / http://127.0.0.1:8001/
-    ProxyTimeout 180
-</VirtualHost>
-```
-
-```bash
-sudo a2enmod proxy proxy_http ssl headers
-sudo certbot --apache -d mailsender.vvmtechnologies.com
-sudo a2ensite mailsender && sudo systemctl reload apache2
 ```
 
 ---
