@@ -36,6 +36,10 @@ local_settings.py
 Thumbs.db
 desktop.ini
 
+# ── Local machine state ──────────────────────────────────
+# Tracks how far sync_to_prod has pushed; per-machine, not shared.
+.sync_state.json
+
 # ── Exports the app generates ────────────────────────────
 *.xlsx
 *.csv
