@@ -196,9 +196,11 @@
             position: relative;
             margin: 0 2px 14px;
         }
-        .sb-search input {
+        /* input[type=text] further down carries the same specificity and a
+           later position, so it wins unless this selector is tightened. */
+        .sb-search input[type=text] {
             width: 100%;
-            padding: 8px 38px 8px 32px;
+            padding: 8px 40px 8px 34px;
             background: #fafafa;
             border: 1px solid #ececec;
             border-radius: 8px;
@@ -209,19 +211,19 @@
             transition: all .12s;
             letter-spacing: -0.1px;
         }
-        :root[data-theme="dark"] .sb-search input {
+        :root[data-theme="dark"] .sb-search input[type=text] {
             background: #131316; border-color: #27272a; color: #e4e4e7;
         }
-        .sb-search input:focus {
+        .sb-search input[type=text]:focus {
             background: #ffffff;
             border-color: #d4d4d8;
             box-shadow: 0 0 0 3px rgba(0,0,0,0.03);
         }
-        :root[data-theme="dark"] .sb-search input:focus {
+        :root[data-theme="dark"] .sb-search input[type=text]:focus {
             background: #18181b;
             border-color: #52525b; box-shadow: 0 0 0 3px rgba(255,255,255,0.03);
         }
-        .sb-search input::placeholder { color: #a1a1aa; font-weight: 450; }
+        .sb-search input[type=text]::placeholder { color: #a1a1aa; font-weight: 450; }
         .sb-search-icon {
             position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
             color: #a1a1aa; pointer-events: none;
@@ -335,6 +337,41 @@
             display: inline-grid; place-items: center;
         }
         .nav-group.open .nav-toggle .chev { transform: rotate(180deg); }
+
+        /* Clear button — only while there is something to clear */
+        .sb-clear {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            width: 20px; height: 20px; border: 0; border-radius: 5px;
+            background: #e4e4e7; color: #52525b; cursor: pointer;
+            font-size: 12px; line-height: 1; display: none;
+            place-items: center; font-family: inherit; padding: 0;
+        }
+        .sb-clear:hover { background: #d4d4d8; color: #18181b; }
+        :root[data-theme="dark"] .sb-clear { background: #27272a; color: #a1a1aa; }
+        .sb-search.searching .sb-clear { display: grid; }
+        .sb-search.searching .sb-kbd { display: none; }
+
+        .sb-empty {
+            display: none; padding: 18px 12px; text-align: center;
+            font-size: 12.5px; color: #a1a1aa; line-height: 1.6;
+        }
+        .sidebar.no-results .sb-empty { display: block; }
+
+        /* A collapsed group whose current page lives inside it should still
+           read as the active one. */
+        .nav-group.has-active > .nav-toggle { color: #09090b; font-weight: 600; }
+        .nav-group.has-active:not(.open) > .nav-toggle { background: #f4f4f5; }
+        :root[data-theme="dark"] .nav-group.has-active > .nav-toggle { color: #fafafa; }
+        :root[data-theme="dark"] .nav-group.has-active:not(.open) > .nav-toggle { background: #18181b; }
+
+        /* Mark the active child against the rail instead of only tinting it. */
+        .nav-sub a { position: relative; }
+        .nav-sub a.active::before {
+            content: ''; position: absolute; left: -12px; top: 50%;
+            transform: translateY(-50%);
+            width: 3px; height: 15px; border-radius: 2px; background: #18181b;
+        }
+        :root[data-theme="dark"] .nav-sub a.active::before { background: #fafafa; }
 
         /* ── Badges ── */
         .nav .nav-badge {
@@ -750,9 +787,12 @@
         <!-- Search -->
         <div class="sb-search">
             <svg class="sb-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" id="sbSearch" placeholder="Search..." autocomplete="off">
+            <input type="text" id="sbSearch" placeholder="Search menu" autocomplete="off"
+                   spellcheck="false" aria-label="Search the menu">
             <span class="sb-kbd">K</span>
+            <button type="button" class="sb-clear" id="sbClear" aria-label="Clear search">&times;</button>
         </div>
+        <div class="sb-empty" id="sbEmpty">Nothing matches that.<br>Try a shorter word.</div>
         <!-- ━━━━━━ MAIN NAV — daily work first, setup last ━━━━━━ -->
         <nav class="nav">
             <a href="{% url 'dashboard' %}" class="sb-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
@@ -776,7 +816,7 @@
 
             <div class="nav-group" id="g-data">
                 <button type="button" class="nav-toggle" onclick="toggleGroup('g-data')">
-                    <span class="ico">📥</span> Lead Data
+                    <span class="ico">🗂️</span> Lead Data
                     <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
                 </button>
                 <div class="nav-sub">
@@ -791,7 +831,7 @@
 
             <div class="nav-group" id="g-outreach">
                 <button type="button" class="nav-toggle" onclick="toggleGroup('g-outreach')">
-                    <span class="ico">📤</span> Outreach
+                    <span class="ico">✉️</span> Outreach
                     <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
                 </button>
                 <div class="nav-sub">
@@ -1042,32 +1082,100 @@ function toggleGroup(id) {
 // Search filter
 const sbSearch = document.getElementById('sbSearch');
 if (sbSearch) {
-    sbSearch.addEventListener('input', e => {
-        const q = e.target.value.toLowerCase().trim();
-        document.querySelectorAll('.sidebar .nav a, .sidebar .nav-toggle').forEach(el => {
-            const text = el.textContent.toLowerCase();
-            const match = !q || text.includes(q);
-            el.style.display = match ? '' : 'none';
-            // Open any group that has visible matches
-            const grp = el.closest('.nav-group');
-            if (grp && match && q) grp.classList.add('open');
+    const sidebar   = document.querySelector('.sidebar');
+    const wrap      = sbSearch.closest('.sb-search');
+    const clearBtn  = document.getElementById('sbClear');
+    const groups    = Array.from(document.querySelectorAll('.sidebar .nav-group'));
+    const flatLinks = Array.from(document.querySelectorAll('.sidebar .nav > a'));
+    const dividers  = Array.from(document.querySelectorAll('.sidebar .nav-divider'));
+
+    // Which groups the person had open before searching, so their layout
+    // comes back exactly as they left it.
+    let restoreOpen = null;
+
+    function show(el, on) { el.style.display = on ? '' : 'none'; }
+
+    function filter(q) {
+        q = q.toLowerCase().trim();
+        wrap.classList.toggle('searching', q.length > 0);
+
+        if (!q) {
+            groups.forEach(g => {
+                show(g, true);
+                g.querySelectorAll('.nav-sub a').forEach(a => show(a, true));
+                if (restoreOpen) g.classList.toggle('open', restoreOpen.has(g.id));
+            });
+            flatLinks.forEach(a => show(a, true));
+            dividers.forEach(d => show(d, true));
+            sidebar.classList.remove('no-results');
+            restoreOpen = null;
+            return;
+        }
+
+        if (restoreOpen === null) {
+            restoreOpen = new Set(groups.filter(g => g.classList.contains('open')).map(g => g.id));
+        }
+
+        let hits = 0;
+
+        flatLinks.forEach(a => {
+            const on = a.textContent.toLowerCase().includes(q);
+            show(a, on);
+            if (on) hits++;
         });
+
+        groups.forEach(g => {
+            const toggle = g.querySelector('.nav-toggle');
+            const label  = toggle ? toggle.textContent.toLowerCase() : '';
+            const groupHit = label.includes(q);
+            let childHits = 0;
+
+            g.querySelectorAll('.nav-sub a').forEach(a => {
+                // A matching group name reveals everything inside it.
+                const on = groupHit || a.textContent.toLowerCase().includes(q);
+                show(a, on);
+                if (on) childHits++;
+            });
+
+            const keep = groupHit || childHits > 0;
+            show(g, keep);
+            g.classList.toggle('open', keep);   // open it so the matches are visible
+            if (keep) hits += childHits || 1;
+        });
+
+        // Dividers only separate things that are still on screen.
+        dividers.forEach(d => show(d, false));
+        sidebar.classList.toggle('no-results', hits === 0);
+    }
+
+    sbSearch.addEventListener('input', e => filter(e.target.value));
+
+    clearBtn.addEventListener('click', () => {
+        sbSearch.value = '';
+        filter('');
+        sbSearch.focus();
     });
-    // K hotkey to focus search
+
+    // K focuses the search, Escape clears and leaves it.
     document.addEventListener('keydown', e => {
-        if (e.key.toLowerCase() === 'k' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-            if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-                e.preventDefault();
-                sbSearch.focus();
-                sbSearch.select();
-            }
+        const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+        if (e.key.toLowerCase() === 'k' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            sbSearch.focus();
+            sbSearch.select();
         }
         if (e.key === 'Escape' && document.activeElement === sbSearch) {
             sbSearch.value = '';
-            sbSearch.dispatchEvent(new Event('input'));
+            filter('');
             sbSearch.blur();
         }
     });
+}
+
+// Flag the group holding the current page, so it reads as active when collapsed.
+document.querySelectorAll('.sidebar .nav-group').forEach(g => {
+    if (g.querySelector('.nav-sub a.active')) g.classList.add('has-active');
+});
 }
 
 // Sync sidebar notification badge with topbar badge
