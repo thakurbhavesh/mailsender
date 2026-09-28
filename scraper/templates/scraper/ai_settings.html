@@ -3,7 +3,7 @@
 {% block subheading %}Models, tokens & live testing{% endblock %}
 {% block content %}
 
-<div class="stats-grid" style="grid-template-columns:repeat(4, 1fr);">
+<div class="stats-grid">
     <div class="stat s1"><span class="icon">🤖</span><div class="label">Active Model</div><div class="value" style="font-size:14px;font-weight:700;line-height:1.4;margin-top:8px;">{{ setting.model }}</div></div>
     <div class="stat s2"><span class="icon">📊</span><div class="label">Requests Today</div><div class="value">{{ overall.requests }}</div></div>
     <div class="stat s3"><span class="icon">🎯</span><div class="label">Tokens Today</div><div class="value">{{ overall.total_tokens }}</div></div>

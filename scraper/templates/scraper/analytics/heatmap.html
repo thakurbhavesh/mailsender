@@ -12,7 +12,7 @@
     <a href="?preset={{ preset }}{% if preset == 'custom' %}&start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}{% endif %}&metric=conversion" style="padding:8px 16px;border-radius:8px;background:{% if metric == 'conversion' %}#10b981;color:white{% else %}var(--card);color:var(--text);border:1.5px solid var(--border){% endif %};font-weight:700;text-decoration:none;font-size:13px;">🎉 Conversions</a>
 </div>
 
-<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+<div class="g-split" style="gap:20px;">
     <!-- Heatmap grid -->
     <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:22px;overflow-x:auto;">
         <h2 style="margin:0 0 16px;">🌡️ Day × Hour Heatmap ({% if metric == 'conversion' %}Conversions{% else %}Calls{% endif %})</h2>

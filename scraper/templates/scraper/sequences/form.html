@@ -79,7 +79,7 @@
                 <form method="post" action="{% url 'step_add' seq.id %}" style="background:#eef2ff;padding:16px;border-radius:10px;border:1.5px dashed #c7d2fe;">
                     {% csrf_token %}
                     <h4 style="margin:0 0 12px;color:#3730a3;">+ Add Step</h4>
-                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:10px;">
+                    <div class="g-split" style="gap:10px;margin-bottom:10px;">
                         <div>
                             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Email Template *</label>
                             <select name="template_id" required style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;background:white;">

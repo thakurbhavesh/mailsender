@@ -644,6 +644,18 @@
         .src-justdial { background: #fef3c7; color: #92400e; }
         .src-indiamart { background: #ffedd5; color: #9a3412; }
 
+        /* Reusable responsive grids — use these instead of inline
+           grid-template-columns, which a media query cannot override. */
+        .g-split { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+        .g-3     { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        .g-4     { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        /* A 7-column week never folds, so let it scroll instead of squashing. */
+        .g-week-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .g-week-scroll > * { min-width: 560px; }
+
+        @media (max-width: 1100px) { .g-4 { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 900px)  { .g-split, .g-3, .g-4 { grid-template-columns: 1fr; } }
+
         /* ═══════════════════════════════════════════════
            RESPONSIVE — phone & tablet
            Sidebar becomes an off-canvas drawer below 900px;
