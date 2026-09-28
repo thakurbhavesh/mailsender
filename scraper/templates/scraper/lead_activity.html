@@ -38,6 +38,16 @@
 .pill-opened { background:#dcfce7; color:#15803d; }
 .pill-unopened { background:#fef3c7; color:#92400e; }
 .pill-failed { background:#fee2e2; color:#b91c1c; }
+
+.la-split { display:grid; grid-template-columns:1.1fr 1fr; gap:18px; align-items:start; }
+@media (max-width: 1000px) { .la-split { grid-template-columns:1fr; } }
+@media (max-width: 640px) {
+    .la-kpi { grid-template-columns:1fr 1fr; }
+    .tl { padding-left:30px; }
+    .tl-dot { left:-30px; width:24px; height:24px; font-size:11px; }
+    .mail-stats { gap:10px; font-size:11.5px; }
+    .la-top .btn { flex:1 1 auto; }
+}
 </style>
 
 <div class="la-top">
@@ -69,7 +79,7 @@
         <div class="sub">{% if summary.last_open %}{{ summary.last_open|timesince }} pehle{% endif %}</div></div>
 </div>
 
-<div style="display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:start;">
+<div class="la-split">
 
     <!-- ───── Timeline ───── -->
     <div class="card">

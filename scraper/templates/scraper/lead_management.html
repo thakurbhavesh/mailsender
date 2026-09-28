@@ -37,6 +37,18 @@
 .num { font-variant-numeric: tabular-nums; font-weight:700; }
 .num.zero { color:#cbd5e1; font-weight:500; }
 .when { font-size:11px; color:var(--text-muted); white-space:nowrap; }
+
+@media (max-width: 900px) {
+    .lm-kpi { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; }
+    .lm-kpi .k { padding:11px 13px; }
+    .lm-kpi .k .val { font-size:21px; }
+    .lm-chips { overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
+}
+@media (max-width: 640px) {
+    .lm-kpi { grid-template-columns:1fr 1fr; }
+    .lm-table { font-size:12px; }
+    .lm-table th, .lm-table td { padding:8px 6px; }
+}
 </style>
 
 <!-- ───────── KPI strip ───────── -->
