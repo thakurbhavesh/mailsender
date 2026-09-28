@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Place, SocialTouch
+from .models import Place, SocialTouch, SocialTemplate
 
 PLATFORMS = dict(SocialTouch.PLATFORM_CHOICES)
 
@@ -236,3 +236,120 @@ def social_bulk(request):
     messages.success(request, '%s logged on %s for %d leads.' % (
         dict(SocialTouch.ACTION_CHOICES)[action], PLATFORMS[platform], len(places)))
     return redirect(back)
+
+
+# ─────────────────────────────────────────────────────────────
+# Per-lead panel: pick a network, write the message, log what happened
+# ─────────────────────────────────────────────────────────────
+DEFAULT_TEMPLATES = [
+    ('LinkedIn — connection note', 'linkedin',
+     "Hi — came across {{name}} while looking at {{category}} teams in {{city}}. "
+     "Would like to connect."),
+    ('LinkedIn — first message', 'linkedin',
+     "Hi, thanks for connecting.\n\n"
+     "Quick one: where does {{name}} handle internal team chat right now — "
+     "Slack, Teams or WhatsApp?\n\n"
+     "We build a self-hosted alternative, so the data stays on your own "
+     "servers. Worth a short look?"),
+    ('Instagram / Facebook — opener', '',
+     "Hi {{name}} — saw your page while looking at {{category}} businesses "
+     "in {{city}}. Are you the right person to speak to about your "
+     "internal team communication?"),
+    ('WhatsApp — short intro', 'whatsapp',
+     "Hi, this is from VVM Technologies. We work with {{category}} teams in "
+     "{{city}} on secure internal chat that runs on your own servers. "
+     "Is it worth a 10-minute call?"),
+]
+
+
+def ensure_default_templates():
+    """Seed a few starters the first time the panel is opened."""
+    if SocialTemplate.objects.exists():
+        return
+    SocialTemplate.objects.bulk_create([
+        SocialTemplate(name=n, platform=p, body=b) for n, p, b in DEFAULT_TEMPLATES
+    ])
+
+
+def social_panel(request, place_id):
+    """Everything needed to work one lead, as JSON for the slide-over."""
+    place = get_object_or_404(Place, id=place_id)
+    ensure_default_templates()
+
+    profiles = [
+        {'key': k, 'label': PLATFORMS[k], 'url': getattr(place, f),
+         'open_url': reverse('social_open', args=[place.id, k])}
+        for k, f in PROFILE_FIELDS.items() if getattr(place, f)
+    ]
+    if place.phone:
+        profiles.append({'key': 'whatsapp', 'label': 'WhatsApp',
+                         'url': place.whatsapp_link(), 'open_url': place.whatsapp_link()})
+
+    touches = [{
+        'id': t.id,
+        'platform': t.platform,
+        'platform_label': t.get_platform_display(),
+        'action': t.action,
+        'action_label': t.get_action_display(),
+        'note': t.note,
+        'user': t.user.username if t.user else '',
+        'when': timezone.localtime(t.created_at).strftime('%d %b %Y, %H:%M'),
+    } for t in SocialTouch.objects.filter(place=place).select_related('user')]
+
+    templates = [{
+        'id': t.id, 'name': t.name, 'platform': t.platform,
+        'body': t.render(place),
+    } for t in SocialTemplate.objects.filter(is_active=True)]
+
+    return JsonResponse({
+        'ok': True,
+        'lead': {
+            'id': place.id, 'name': place.name,
+            'category': place.category, 'address': place.address,
+            'website': place.website, 'phone': place.phone,
+            'status': place.lead_status,
+            'status_label': place.get_lead_status_display(),
+        },
+        'profiles': profiles,
+        'touches': touches,
+        'templates': templates,
+        'actions': [{'value': v, 'label': l} for v, l in SocialTouch.ACTION_CHOICES],
+        'statuses': [{'value': v, 'label': l} for v, l in Place.LEAD_STATUS_CHOICES],
+    })
+
+
+@require_POST
+def social_touch_update(request, touch_id):
+    """Correct a logged touch — wrong network, wrong action, or a better note."""
+    touch = get_object_or_404(SocialTouch, id=touch_id)
+    platform = request.POST.get('platform', touch.platform)
+    action = request.POST.get('action', touch.action)
+
+    if platform not in PLATFORMS or action not in dict(SocialTouch.ACTION_CHOICES):
+        return JsonResponse({'ok': False, 'error': 'Unknown platform or action'}, status=400)
+
+    touch.platform = platform
+    touch.action = action
+    touch.note = request.POST.get('note', '').strip()[:300]
+    touch.save(update_fields=['platform', 'action', 'note'])
+    return JsonResponse({'ok': True})
+
+
+@require_POST
+def social_touch_delete(request, touch_id):
+    """Remove a touch logged by mistake."""
+    get_object_or_404(SocialTouch, id=touch_id).delete()
+    return JsonResponse({'ok': True})
+
+
+@require_POST
+def social_set_status(request, place_id):
+    """Change the lead's stage from inside the panel."""
+    place = get_object_or_404(Place, id=place_id)
+    status = request.POST.get('lead_status', '')
+    if status not in dict(Place.LEAD_STATUS_CHOICES):
+        return JsonResponse({'ok': False, 'error': 'Unknown status'}, status=400)
+    place.lead_status = status
+    place.save(update_fields=['lead_status', 'updated_at'])
+    return JsonResponse({'ok': True, 'status': status,
+                         'label': place.get_lead_status_display()})

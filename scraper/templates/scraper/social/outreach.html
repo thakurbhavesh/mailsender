@@ -54,15 +54,46 @@
 .logbar select { padding:7px 10px; border-radius:8px; border:0; font-size:13px; font-family:inherit; }
 .rowSel, #selAll { width:16px; height:16px; cursor:pointer; accent-color:var(--primary,#4f46e5); }
 
-.ask-net { position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:400;
-           display:grid; place-items:center; padding:20px; }
-.ask-net .box { background:var(--card,#fff); border-radius:14px; padding:22px; max-width:360px; width:100%; }
+.work-btn { border:1px solid var(--border); background:#fff; border-radius:8px;
+            padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer;
+            font-family:inherit; white-space:nowrap; color:var(--primary,#4f46e5); }
+.work-btn:hover { background:var(--primary,#4f46e5); color:#fff; border-color:transparent; }
 
-.quick { display:flex; gap:4px; }
-.quick button { border:1px solid var(--border); background:#fff; border-radius:7px;
-                padding:4px 8px; font-size:11px; cursor:pointer; font-family:inherit;
-                white-space:nowrap; }
-.quick button:hover { border-color:var(--primary,#4f46e5); color:var(--primary,#4f46e5); }
+/* ── Slide-over panel ── */
+.sp-back { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:400; }
+.sp { position:fixed; top:0; right:0; bottom:0; width:520px; max-width:94vw; z-index:401;
+      background:var(--card,#fff); box-shadow:-8px 0 40px rgba(0,0,0,.2);
+      display:flex; flex-direction:column; }
+.sp-head { padding:18px 20px; border-bottom:1px solid var(--border); }
+.sp-head h3 { margin:0 0 3px; font-size:17px; }
+.sp-head .sub { font-size:12.5px; color:var(--text-muted); }
+.sp-x { position:absolute; top:14px; right:16px; border:0; background:none; font-size:22px;
+        cursor:pointer; color:var(--text-muted); line-height:1; font-family:inherit; }
+.sp-body { flex:1; overflow-y:auto; padding:18px 20px; }
+.sp-sec { margin-bottom:22px; }
+.sp-sec > h4 { font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+               color:var(--text-muted); font-weight:800; margin:0 0 9px; }
+.sp-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.sp textarea { width:100%; min-height:120px; font-family:inherit; font-size:13px;
+               line-height:1.6; padding:11px 13px; border-radius:9px;
+               border:1.5px solid var(--border); resize:vertical; }
+.sp select, .sp input[type=text] { font-size:13px; padding:8px 11px; border-radius:8px; }
+.sp-hint { font-size:11.5px; color:var(--text-muted); margin-top:6px; line-height:1.5; }
+
+.sp-touch { border:1px solid var(--border); border-radius:9px; padding:10px 12px; margin-bottom:8px; }
+.sp-touch .top { display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap; }
+.sp-touch .meta { font-size:11px; color:var(--text-muted); margin-top:3px; }
+.sp-touch .note { font-size:12.5px; margin-top:6px; color:var(--text); }
+.sp-touch .acts { display:flex; gap:6px; }
+.sp-touch .acts button { border:1px solid var(--border); background:#fff; border-radius:6px;
+                         padding:3px 8px; font-size:11px; cursor:pointer; font-family:inherit; }
+.sp-touch .acts button:hover { border-color:var(--primary,#4f46e5); color:var(--primary,#4f46e5); }
+.sp-edit { display:none; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); }
+.sp-touch.editing .sp-edit { display:block; }
+
+.copied { background:#059669 !important; color:#fff !important; border-color:transparent !important; }
+
+@media (max-width:640px) { .sp { width:100%; max-width:100%; } }
 
 @media (max-width:900px) {
     .so-kpi { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
@@ -195,10 +226,7 @@
                     {% if p.touch_count %}<div style="color:#94a3b8;">{{ p.touch_count }} touch{{ p.touch_count|pluralize:"es" }}</div>{% endif %}
                 </td>
                 <td>
-                    <div class="quick">
-                        <button type="button" onclick="logTouch({{ p.id }}, 'messaged', this)">Messaged</button>
-                        <button type="button" onclick="logTouch({{ p.id }}, 'replied', this)">Replied</button>
-                    </div>
+                    <button type="button" class="work-btn" onclick="openPanel({{ p.id }})">Work this lead</button>
                 </td>
                 <td><span class="badge badge-{{ p.lead_status }}">{{ p.get_lead_status_display }}</span>
                     <div class="so-sub">score {{ p.lead_score }}</div></td>
@@ -221,22 +249,59 @@
     {% endif %}
 </div>
 
-<!-- Quick-log form: which network was it? -->
-<div id="askNet" class="ask-net" hidden>
-  <div class="box">
-    <h3 style="margin:0 0 6px;font-size:16px;">Which network?</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;" id="askWhat"></p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      {% for v,l in platform_choices %}
-        <button type="button" class="btn btn-secondary btn-sm" onclick="sendTouch('{{ v }}')">{{ l }}</button>
-      {% endfor %}
-      <button type="button" class="btn btn-secondary btn-sm" onclick="sendTouch('whatsapp')">WhatsApp</button>
+<!-- ══ Slide-over: work one lead ══ -->
+<div class="sp-back" id="spBack" hidden onclick="closePanel()"></div>
+<aside class="sp" id="spPanel" hidden aria-label="Lead outreach panel">
+    <div class="sp-head" style="position:relative;">
+        <button class="sp-x" type="button" onclick="closePanel()" aria-label="Close">&times;</button>
+        <h3 id="spName">—</h3>
+        <div class="sub" id="spSub"></div>
     </div>
-    <button type="button" class="btn btn-secondary btn-sm" style="margin-top:12px;" onclick="closeAsk()">Cancel</button>
-  </div>
-</div>
+    <div class="sp-body">
+
+        <div class="sp-sec">
+            <h4>1 · Open their profile</h4>
+            <div class="sp-row" id="spProfiles"></div>
+            <div class="sp-hint">Opening a profile is logged automatically, once per day.</div>
+        </div>
+
+        <div class="sp-sec">
+            <h4>2 · Write the message</h4>
+            <div class="sp-row" style="margin-bottom:8px;">
+                <select id="spTemplate" style="flex:1;min-width:180px;">
+                    <option value="">Start from a template…</option>
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="copyMsg(this)">Copy</button>
+            </div>
+            <textarea id="spMessage" placeholder="Write or pick a template, then copy and paste it into the DM."></textarea>
+            <div class="sp-hint">Networks do not allow sending DMs from outside, so copy the text
+                and paste it into the chat you just opened.</div>
+        </div>
+
+        <div class="sp-sec">
+            <h4>3 · Log what happened</h4>
+            <div class="sp-row" style="margin-bottom:8px;">
+                <select id="spPlatform" style="flex:1;min-width:130px;"></select>
+                <select id="spAction" style="flex:1;min-width:150px;"></select>
+            </div>
+            <input type="text" id="spNote" maxlength="300" placeholder="Note (optional) — what they said, what to do next">
+            <div class="sp-row" style="margin-top:10px;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveTouch(this)">Save</button>
+                <span style="flex:1;"></span>
+                <label style="font-size:12px;color:var(--text-muted);">Stage</label>
+                <select id="spStatus" onchange="saveStatus(this)" style="min-width:130px;"></select>
+            </div>
+        </div>
+
+        <div class="sp-sec">
+            <h4>History <span id="spCount" style="font-weight:600;"></span></h4>
+            <div id="spTouches"></div>
+        </div>
+    </div>
+</aside>
 
 <script>
+/* ── Bulk selection bar ────────────────────────────────────── */
 (function () {
     const form = document.getElementById('soForm');
     const bar  = document.getElementById('logBar');
@@ -258,41 +323,189 @@
     refresh();
 })();
 
-/* Quick log — ask which network, then post it without leaving the page. */
-let pending = null;
-function logTouch(placeId, action, btn) {
-    pending = { placeId, action, btn };
-    document.getElementById('askWhat').textContent =
-        action === 'replied' ? 'Where did they reply?' : 'Where did you message them?';
-    document.getElementById('askNet').hidden = false;
-}
-function closeAsk() { document.getElementById('askNet').hidden = true; pending = null; }
+/* ── Slide-over panel ──────────────────────────────────────── */
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+let current = null;
 
-function sendTouch(platform) {
-    if (!pending) return;
-    const { placeId, action, btn } = pending;
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g,
+    ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+function post(url, data) {
     const body = new FormData();
-    body.append('platform', platform);
-    body.append('action', action);
-    body.append('csrfmiddlewaretoken',
-                document.querySelector('[name=csrfmiddlewaretoken]').value);
-
-    fetch('/social/' + placeId + '/log/', {
-        method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    }).then(r => r.json()).then(() => {
-        btn.textContent = '✓ ' + btn.textContent.replace('✓ ', '');
-        btn.style.borderColor = '#22c55e';
-        btn.style.color = '#15803d';
-    }).catch(() => { btn.textContent = 'Failed'; });
-
-    closeAsk();
+    Object.entries(data || {}).forEach(([k, v]) => body.append(k, v));
+    body.append('csrfmiddlewaretoken', CSRF);
+    return fetch(url, { method: 'POST', body, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => r.json());
 }
-// Close on backdrop click or Escape, not only the Cancel button.
-document.getElementById('askNet').addEventListener('click', e => {
-    if (e.target.id === 'askNet') closeAsk();
+
+function fill(sel, items, valueKey, labelKey, selected) {
+    sel.innerHTML = '';
+    items.forEach(it => {
+        const o = document.createElement('option');
+        o.value = it[valueKey]; o.textContent = it[labelKey];
+        if (it[valueKey] === selected) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+function openPanel(id) {
+    fetch('/social/' + id + '/panel/').then(r => r.json()).then(d => {
+        if (!d.ok) return;
+        current = d;
+
+        document.getElementById('spName').textContent = d.lead.name;
+        document.getElementById('spSub').textContent =
+            [d.lead.category, d.lead.address].filter(Boolean).join(' · ');
+
+        // Profiles
+        const box = document.getElementById('spProfiles');
+        box.innerHTML = d.profiles.length
+            ? d.profiles.map(p =>
+                '<a class="btn btn-secondary btn-sm" target="_blank" rel="noopener" href="' +
+                esc(p.open_url) + '">' + esc(p.label) + ' &#8599;</a>').join('')
+            : '<span style="font-size:12.5px;color:var(--text-muted);">No profiles found for this lead.</span>';
+
+        // Templates
+        const tpl = document.getElementById('spTemplate');
+        tpl.innerHTML = '<option value="">Start from a template…</option>';
+        d.templates.forEach(t => {
+            const o = document.createElement('option');
+            o.value = t.id; o.textContent = t.name; o.dataset.body = t.body;
+            tpl.appendChild(o);
+        });
+        document.getElementById('spMessage').value = '';
+
+        // Selects
+        const platforms = d.profiles.length
+            ? d.profiles.map(p => ({ value: p.key, label: p.label }))
+            : [{ value: 'linkedin', label: 'LinkedIn' }, { value: 'facebook', label: 'Facebook' },
+               { value: 'instagram', label: 'Instagram' }, { value: 'whatsapp', label: 'WhatsApp' }];
+        fill(document.getElementById('spPlatform'), platforms, 'value', 'label');
+        fill(document.getElementById('spAction'), d.actions, 'value', 'label', 'messaged');
+        fill(document.getElementById('spStatus'), d.statuses, 'value', 'label', d.lead.status);
+        document.getElementById('spNote').value = '';
+
+        renderTouches(d.touches);
+
+        document.getElementById('spBack').hidden = false;
+        document.getElementById('spPanel').hidden = false;
+        document.body.classList.add('sb-locked');
+    });
+}
+
+function closePanel() {
+    document.getElementById('spBack').hidden = true;
+    document.getElementById('spPanel').hidden = true;
+    document.body.classList.remove('sb-locked');
+    current = null;
+}
+
+function renderTouches(touches) {
+    document.getElementById('spCount').textContent = touches.length ? '(' + touches.length + ')' : '';
+    const wrap = document.getElementById('spTouches');
+    if (!touches.length) {
+        wrap.innerHTML = '<div style="font-size:12.5px;color:var(--text-muted);">Nothing logged yet.</div>';
+        return;
+    }
+    wrap.innerHTML = touches.map(t => `
+        <div class="sp-touch" id="t${t.id}">
+          <div class="top">
+            <div>
+              <b style="font-size:13px;">${esc(t.action_label)}</b>
+              <span style="font-size:12px;color:var(--text-muted);"> · ${esc(t.platform_label)}</span>
+              <div class="meta">${esc(t.when)}${t.user ? ' · ' + esc(t.user) : ''}</div>
+            </div>
+            <div class="acts">
+              <button type="button" onclick="toggleEdit(${t.id})">Edit</button>
+              <button type="button" onclick="removeTouch(${t.id})">Delete</button>
+            </div>
+          </div>
+          ${t.note ? '<div class="note">' + esc(t.note) + '</div>' : ''}
+          <div class="sp-edit">
+            <div class="sp-row" style="margin-bottom:6px;">
+              <select id="ep${t.id}" style="flex:1;"></select>
+              <select id="ea${t.id}" style="flex:1;"></select>
+            </div>
+            <input type="text" id="en${t.id}" maxlength="300" value="${esc(t.note)}" placeholder="Note">
+            <div class="sp-row" style="margin-top:6px;">
+              <button type="button" class="btn btn-primary btn-sm" onclick="saveEdit(${t.id})">Save</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEdit(${t.id})">Cancel</button>
+            </div>
+          </div>
+        </div>`).join('');
+
+    // Populate the edit selects once the markup exists.
+    touches.forEach(t => {
+        const nets = [{ value: 'facebook', label: 'Facebook' }, { value: 'instagram', label: 'Instagram' },
+                      { value: 'linkedin', label: 'LinkedIn' }, { value: 'whatsapp', label: 'WhatsApp' }];
+        fill(document.getElementById('ep' + t.id), nets, 'value', 'label', t.platform);
+        fill(document.getElementById('ea' + t.id), current.actions, 'value', 'label', t.action);
+    });
+}
+
+function refreshTouches() {
+    if (!current) return;
+    fetch('/social/' + current.lead.id + '/panel/').then(r => r.json()).then(d => {
+        current = d;
+        renderTouches(d.touches);
+    });
+}
+
+function toggleEdit(id) {
+    document.getElementById('t' + id).classList.toggle('editing');
+}
+
+function saveEdit(id) {
+    post('/social/touch/' + id + '/update/', {
+        platform: document.getElementById('ep' + id).value,
+        action:   document.getElementById('ea' + id).value,
+        note:     document.getElementById('en' + id).value,
+    }).then(refreshTouches);
+}
+
+function removeTouch(id) {
+    if (!confirm('Delete this entry?')) return;
+    post('/social/touch/' + id + '/delete/', {}).then(refreshTouches);
+}
+
+function saveTouch(btn) {
+    if (!current) return;
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    post('/social/' + current.lead.id + '/log/', {
+        platform: document.getElementById('spPlatform').value,
+        action:   document.getElementById('spAction').value,
+        note:     document.getElementById('spNote').value,
+    }).then(() => {
+        document.getElementById('spNote').value = '';
+        refreshTouches();
+        btn.disabled = false; btn.textContent = label;
+    });
+}
+
+function saveStatus(sel) {
+    if (!current) return;
+    post('/social/' + current.lead.id + '/status/', { lead_status: sel.value });
+}
+
+function copyMsg(btn) {
+    const text = document.getElementById('spMessage').value;
+    if (!text.trim()) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const was = btn.textContent;
+        btn.textContent = 'Copied'; btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = was; btn.classList.remove('copied'); }, 1400);
+    });
+}
+
+document.getElementById('spTemplate').addEventListener('change', e => {
+    const opt = e.target.selectedOptions[0];
+    if (opt && opt.dataset.body) document.getElementById('spMessage').value = opt.dataset.body;
 });
+
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !document.getElementById('askNet').hidden) closeAsk();
+    if (e.key === 'Escape' && !document.getElementById('spPanel').hidden) closePanel();
 });
 </script>
+
 {% endblock %}

@@ -13,7 +13,8 @@ from django.utils import timezone
 from .email_service import append_unsub_footer, deliver
 from .lead_views import _annotate_engagement, _apply_work_filter, build_timeline
 from .models import (CallLog, EmailAccount, EmailLog, EmailSequence, EmailTemplate,
-                     Place, ScrapeJob, SequenceEnrollment, SocialTouch, Suppression)
+                     Place, ScrapeJob, SequenceEnrollment, SocialTemplate,
+                     SocialTouch, Suppression)
 
 
 def make_place(name='Acme Ltd', email='a@example.com', **kw):
@@ -440,3 +441,79 @@ class SocialOutreachTests(TestCase):
         self.client.post('/social/%d/log/' % self.lead.pk,
                          {'platform': 'myspace', 'action': 'messaged'})
         self.assertEqual(SocialTouch.objects.count(), 0)
+
+
+class SocialPanelTests(TestCase):
+    """The panel is where a lead is actually worked: open the profile, copy a
+    message, log the outcome, fix it later."""
+
+    def setUp(self):
+        self.user = User.objects.create_superuser('panel', 'p@example.com', 'x')
+        self.client.force_login(self.user)
+        self.lead = make_place('Panel Co', 'p@example.com', unique_key='pc')
+        self.lead.linkedin = 'https://linkedin.com/company/panelco'
+        self.lead.phone = '9876543210'
+        self.lead.category = 'Software company'
+        self.lead.address = '12 MG Road, Bengaluru, 560001'
+        self.lead.save()
+
+    def panel(self):
+        return self.client.get('/social/%d/panel/' % self.lead.pk).json()
+
+    def test_panel_lists_only_profiles_that_exist(self):
+        keys = [p['key'] for p in self.panel()['profiles']]
+        self.assertIn('linkedin', keys)
+        self.assertIn('whatsapp', keys)          # from the phone number
+        self.assertNotIn('facebook', keys)
+
+    def test_templates_are_seeded_once_and_merged(self):
+        first = self.panel()['templates']
+        self.assertTrue(first)
+        body = ' '.join(t['body'] for t in first)
+        self.assertIn('Panel Co', body)
+        self.assertNotIn('{{', body)
+        self.panel()   # second open must not duplicate them
+        self.assertEqual(SocialTemplate.objects.count(), len(first))
+
+    def test_template_merge_picks_the_city(self):
+        tpl = SocialTemplate.objects.create(name='t', body='Hi {{name}} in {{city}}')
+        self.assertEqual(tpl.render(self.lead), 'Hi Panel Co in Bengaluru')
+
+    def test_log_then_edit_then_delete(self):
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'linkedin', 'action': 'messaged', 'note': 'first note'})
+        touch = self.panel()['touches'][0]
+        self.assertEqual(touch['note'], 'first note')
+
+        self.client.post('/social/touch/%d/update/' % touch['id'],
+                         {'platform': 'whatsapp', 'action': 'replied', 'note': 'moved to WA'})
+        edited = self.panel()['touches'][0]
+        self.assertEqual(edited['platform'], 'whatsapp')
+        self.assertEqual(edited['action'], 'replied')
+        self.assertEqual(edited['note'], 'moved to WA')
+
+        self.client.post('/social/touch/%d/delete/' % touch['id'], {})
+        self.assertEqual(self.panel()['touches'], [])
+
+    def test_edit_rejects_an_unknown_platform(self):
+        self.client.post('/social/%d/log/' % self.lead.pk,
+                         {'platform': 'linkedin', 'action': 'messaged'})
+        tid = self.panel()['touches'][0]['id']
+        r = self.client.post('/social/touch/%d/update/' % tid,
+                             {'platform': 'myspace', 'action': 'messaged'})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(SocialTouch.objects.get(pk=tid).platform, 'linkedin')
+
+    def test_status_can_be_changed_from_the_panel(self):
+        r = self.client.post('/social/%d/status/' % self.lead.pk,
+                             {'lead_status': 'interested'})
+        self.assertTrue(r.json()['ok'])
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lead_status, 'interested')
+
+    def test_status_rejects_an_unknown_value(self):
+        r = self.client.post('/social/%d/status/' % self.lead.pk,
+                             {'lead_status': 'banana'})
+        self.assertEqual(r.status_code, 400)
+        self.lead.refresh_from_db()
+        self.assertEqual(self.lead.lead_status, 'new')

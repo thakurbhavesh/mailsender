@@ -384,6 +384,48 @@ class Suppression(models.Model):
         return obj
 
 
+class SocialTemplate(models.Model):
+    """A short message to paste into a DM.
+
+    Kept separate from EmailTemplate because a direct message is plain text
+    with no subject — HTML pasted into LinkedIn just shows the tags.
+    """
+    name = models.CharField(max_length=120)
+    platform = models.CharField(max_length=20, blank=True, default='',
+                                help_text='Leave blank to use on any network')
+    body = models.TextField(help_text='Supports {{name}}, {{category}}, {{city}}, {{website}}')
+    times_used = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def render(self, place):
+        """Fill the merge fields for one lead."""
+        city = ''
+        if place.address:
+            parts = [p.strip() for p in place.address.split(',') if p.strip()]
+            # Last part is usually the pin code or country; the one before it
+            # is the city more often than not.
+            city = parts[-2] if len(parts) > 1 else parts[-1]
+        values = {
+            'name': place.name,
+            'category': place.category or 'business',
+            'city': city,
+            'website': place.website,
+            'phone': place.phone,
+            'rating': place.rating,
+        }
+        out = self.body
+        for key, val in values.items():
+            out = out.replace('{{%s}}' % key, str(val or ''))
+        return out
+
+
 class SocialTouch(models.Model):
     """One action taken on a lead's social profile.
 

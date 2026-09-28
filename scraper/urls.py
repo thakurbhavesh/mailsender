@@ -28,6 +28,10 @@ urlpatterns = [
     path('social/<int:place_id>/open/<str:platform>/', social_views.social_open, name='social_open'),
     path('social/<int:place_id>/log/', social_views.social_log, name='social_log'),
     path('social/bulk/', social_views.social_bulk, name='social_bulk'),
+    path('social/<int:place_id>/panel/', social_views.social_panel, name='social_panel'),
+    path('social/<int:place_id>/status/', social_views.social_set_status, name='social_set_status'),
+    path('social/touch/<int:touch_id>/update/', social_views.social_touch_update, name='social_touch_update'),
+    path('social/touch/<int:touch_id>/delete/', social_views.social_touch_delete, name='social_touch_delete'),
 
     path('email/suppressions/', lead_views.suppression_list, name='suppression_list'),
     path('email/suppressions/add/', lead_views.suppression_add, name='suppression_add'),
