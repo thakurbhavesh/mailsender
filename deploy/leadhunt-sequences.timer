@@ -1,0 +1,13 @@
+# Runs the sequence sender every 10 minutes. The command takes a lock, so a
+# long batch simply skips the next tick rather than double-sending.
+[Unit]
+Description=LeadHunt — drip sequence tick
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=10min
+AccuracySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

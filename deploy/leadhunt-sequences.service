@@ -1,0 +1,23 @@
+# Drip-sequence sender. Paired with leadhunt-sequences.timer.
+#   sudo cp deploy/leadhunt-sequences.* /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now leadhunt-sequences.timer
+# Watch it:  journalctl -u leadhunt-sequences -f
+[Unit]
+Description=LeadHunt — send due drip-sequence steps
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=leadhunt
+Group=leadhunt
+WorkingDirectory=/opt/leadhunt
+EnvironmentFile=/opt/leadhunt/.env
+Environment="DJANGO_SETTINGS_MODULE=core.settings_prod"
+Environment="HOME=/opt/leadhunt"
+ExecStart=/opt/leadhunt/venv/bin/python manage.py send_due_steps --limit 100
+# Sending is throttled, so a batch can legitimately take a while.
+TimeoutStartSec=900
+NoNewPrivileges=true
+PrivateTmp=false
+ProtectSystem=full
