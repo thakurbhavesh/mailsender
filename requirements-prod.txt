@@ -21,6 +21,7 @@ python-dotenv>=1.0
 # All your existing deps
 openpyxl>=3.1
 selenium>=4.20
+webdriver-manager>=4.0   # scraper/services.py imports it at module level
 requests>=2.31
 
 # For AI features

@@ -20,6 +20,9 @@ WorkingDirectory=/opt/leadhunt
 EnvironmentFile=/opt/leadhunt/.env
 Environment="DJANGO_SETTINGS_MODULE=core.settings_prod"
 Environment="PATH=/opt/leadhunt/venv/bin"
+# ProtectHome hides /home, so point HOME at the app dir or gunicorn's
+# control server fails with EACCES on the user's home.
+Environment="HOME=/opt/leadhunt"
 ExecStart=/opt/leadhunt/venv/bin/gunicorn -c deploy/gunicorn.conf.py core.wsgi:application
 Restart=always
 RestartSec=5
