@@ -669,7 +669,7 @@
             <input type="text" id="sbSearch" placeholder="Search..." autocomplete="off">
             <span class="sb-kbd">K</span>
         </div>
-        <!-- ━━━━━━ MAIN NAV (no section header — flows from search) ━━━━━━ -->
+        <!-- ━━━━━━ MAIN NAV — daily work first, setup last ━━━━━━ -->
         <nav class="nav">
             <a href="{% url 'dashboard' %}" class="sb-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
                 <span class="ico">🏠</span> Dashboard
@@ -678,27 +678,49 @@
                 <span class="ico">🟢</span> Live Monitor
             </a>
 
-            {# Leads group #}
             <div class="nav-group" id="g-leads">
                 <button type="button" class="nav-toggle" onclick="toggleGroup('g-leads')">
-                    <span class="ico">📂</span> Leads
+                    <span class="ico">🎯</span> Leads
                     <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
                 </button>
                 <div class="nav-sub">
                     <a href="{% url 'lead_management' %}" class="{% if request.resolver_match.url_name == 'lead_management' or request.resolver_match.url_name == 'lead_activity' %}active{% endif %}">Lead Management</a>
                     <a href="{% url 'data_view' %}" class="{% if request.resolver_match.url_name == 'data_view' or request.resolver_match.url_name == 'lead_detail' %}active{% endif %}">Data Explorer</a>
                     <a href="{% url 'quick_add' %}" class="{% if request.resolver_match.url_name == 'quick_add' %}active{% endif %}">Quick Add</a>
+                </div>
+            </div>
+
+            <div class="nav-group" id="g-data">
+                <button type="button" class="nav-toggle" onclick="toggleGroup('g-data')">
+                    <span class="ico">📥</span> Lead Data
+                    <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
+                </button>
+                <div class="nav-sub">
+                    {% if SCRAPING_ENABLED %}
                     <a href="{% url 'jobs' %}" class="{% if request.resolver_match.url_name == 'jobs' or request.resolver_match.url_name == 'job_detail' %}active{% endif %}">Scrape Jobs</a>
+                    {% endif %}
                     <a href="{% url 'import_home' %}" class="{% if 'import' in request.resolver_match.url_name %}active{% endif %}">Import CSV/Excel</a>
                     <a href="{% url 'dedup_home' %}" class="{% if 'dedup' in request.resolver_match.url_name %}active{% endif %}">Deduplication</a>
                     <a href="{% url 'export_config' %}" class="{% if request.resolver_match.url_name == 'export_config' %}active{% endif %}">Export</a>
                 </div>
             </div>
 
-            {# Calling Team group #}
+            <div class="nav-group" id="g-outreach">
+                <button type="button" class="nav-toggle" onclick="toggleGroup('g-outreach')">
+                    <span class="ico">📤</span> Outreach
+                    <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
+                </button>
+                <div class="nav-sub">
+                    <a href="{% url 'compose_bulk' %}" class="{% if 'compose' in request.resolver_match.url_name %}active{% endif %}">Compose & Send</a>
+                    <a href="{% url 'sequences_list' %}" class="{% if 'sequence' in request.resolver_match.url_name or 'step' in request.resolver_match.url_name %}active{% endif %}">Drip Sequences</a>
+                    <a href="{% url 'whatsapp_bulk' %}" class="{% if request.resolver_match.url_name == 'whatsapp_bulk' %}active{% endif %}">WhatsApp Bulk</a>
+                    <a href="{% url 'email_history' %}" class="{% if 'history' in request.resolver_match.url_name or 'log' in request.resolver_match.url_name %}active{% endif %}">Email History</a>
+                </div>
+            </div>
+
             <div class="nav-group" id="g-team">
                 <button type="button" class="nav-toggle" onclick="toggleGroup('g-team')">
-                    <span class="ico">👥</span> Calling Team
+                    <span class="ico">📞</span> Calling Team
                     <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
                 </button>
                 <div class="nav-sub">
@@ -711,23 +733,17 @@
                 </div>
             </div>
 
-            {# Communication group #}
-            <div class="nav-group" id="g-comm">
-                <button type="button" class="nav-toggle" onclick="toggleGroup('g-comm')">
-                    <span class="ico">💬</span> Communication
+            <div class="nav-group" id="g-cal">
+                <button type="button" class="nav-toggle" onclick="toggleGroup('g-cal')">
+                    <span class="ico">📅</span> Meetings
                     <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
                 </button>
                 <div class="nav-sub">
-                    <a href="{% url 'compose_bulk' %}" class="{% if 'compose' in request.resolver_match.url_name %}active{% endif %}">Compose & Send</a>
-                    <a href="{% url 'sequences_list' %}" class="{% if 'sequence' in request.resolver_match.url_name or 'step' in request.resolver_match.url_name %}active{% endif %}">Drip Sequences</a>
-                    <a href="{% url 'whatsapp_bulk' %}" class="{% if request.resolver_match.url_name == 'whatsapp_bulk' %}active{% endif %}">WhatsApp Bulk</a>
-                    <a href="{% url 'email_templates' %}" class="{% if 'template' in request.resolver_match.url_name %}active{% endif %}">Templates</a>
-                    <a href="{% url 'email_accounts' %}" class="{% if 'account' in request.resolver_match.url_name %}active{% endif %}">Gmail Accounts</a>
-                    <a href="{% url 'email_history' %}" class="{% if 'history' in request.resolver_match.url_name or 'log' in request.resolver_match.url_name %}active{% endif %}">Email History</a>
+                    <a href="{% url 'meetings_list' %}" class="{% if 'meeting' in request.resolver_match.url_name %}active{% endif %}">My Meetings</a>
+                    <a href="{% url 'my_schedule' %}" class="{% if request.resolver_match.url_name == 'my_schedule' %}active{% endif %}">Booking Page</a>
                 </div>
             </div>
 
-            {# Analytics group #}
             <div class="nav-group" id="g-analytics">
                 <button type="button" class="nav-toggle" onclick="toggleGroup('g-analytics')">
                     <span class="ico">📊</span> Analytics
@@ -741,46 +757,41 @@
                 </div>
             </div>
 
-            {# Calendar group #}
-            <div class="nav-group" id="g-cal">
-                <button type="button" class="nav-toggle" onclick="toggleGroup('g-cal')">
-                    <span class="ico">📅</span> Calendar
-                    <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
-                </button>
-                <div class="nav-sub">
-                    <a href="{% url 'meetings_list' %}" class="{% if 'meeting' in request.resolver_match.url_name %}active{% endif %}">My Meetings</a>
-                    <a href="{% url 'my_schedule' %}" class="{% if request.resolver_match.url_name == 'my_schedule' %}active{% endif %}">Booking Page</a>
-                </div>
-            </div>
+            <a href="{% url 'ai_writer' %}" class="sb-item {% if request.resolver_match.url_name == 'ai_writer' or request.resolver_match.url_name == 'ai_reply' %}active{% endif %}">
+                <span class="ico">🤖</span> AI Assistant
+            </a>
         </nav>
 
-        <!-- ━━━━━━ Dotted divider ━━━━━━ -->
+        {% if user.is_staff %}
         <div class="nav-divider"></div>
 
         <nav class="nav">
-            <a href="{% url 'features' %}" class="{% if request.resolver_match.url_name == 'features' %}active{% endif %}">
-                <span class="ico">🎁</span> Features
-            </a>
+            <div class="nav-group" id="g-setup">
+                <button type="button" class="nav-toggle" onclick="toggleGroup('g-setup')">
+                    <span class="ico">⚙️</span> Setup
+                    <span class="chev"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,4.5 6,7.5 9,4.5"/></svg></span>
+                </button>
+                <div class="nav-sub">
+                    <a href="{% url 'email_templates' %}" class="{% if 'template' in request.resolver_match.url_name %}active{% endif %}">Email Templates</a>
+                    <a href="{% url 'email_accounts' %}" class="{% if 'account' in request.resolver_match.url_name %}active{% endif %}">Gmail Accounts</a>
+                    <a href="{% url 'ai_settings' %}" class="{% if request.resolver_match.url_name == 'ai_settings' %}active{% endif %}">AI Settings</a>
+                    <a href="/admin/">Django Admin</a>
+                </div>
+            </div>
+
+        </nav>
+        {% endif %}
+
+        <div class="nav-divider"></div>
+
+        <nav class="nav">
             <a href="{% url 'notifications_list' %}" class="{% if 'notification' in request.resolver_match.url_name %}active{% endif %}">
                 <span class="ico">🔔</span> Notifications
                 <span class="nav-badge" id="sbNotifBadge" style="display:none;">0</span>
             </a>
-        </nav>
-
-        <div class="nav-divider"></div>
-
-        <nav class="nav">
-            <a href="{% url 'ai_writer' %}" class="{% if request.resolver_match.url_name == 'ai_writer' or request.resolver_match.url_name == 'ai_reply' %}active{% endif %}">
-                <span class="ico">🤖</span> AI Assistant
+            <a href="{% url 'features' %}" class="{% if request.resolver_match.url_name == 'features' %}active{% endif %}">
+                <span class="ico">🎁</span> Features
             </a>
-            {% if user.is_staff %}
-            <a href="{% url 'ai_settings' %}" class="{% if request.resolver_match.url_name == 'ai_settings' %}active{% endif %}">
-                <span class="ico">⚙️</span> Settings
-            </a>
-            <a href="/admin/" class="">
-                <span class="ico">🛡️</span> Django Admin
-            </a>
-            {% endif %}
             <form method="post" action="{% url 'logout' %}" style="margin:0;">
                 {% csrf_token %}
                 <button type="submit" class="nav-toggle nav-danger" style="cursor:pointer;">
